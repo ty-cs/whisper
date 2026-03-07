@@ -36,7 +36,7 @@ jobs:
           go-version: '1.22'
 
       - name: Build Go CLI
-        run: go build -v ./cmd/whisper/
+        run: go build -v -ldflags "-X main.version=$(git describe --tags --always --dirty)" ./cmd/whisper/
 
       - name: Test Go Crypto
         run: go test -v ./internal/...
