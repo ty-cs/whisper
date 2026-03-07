@@ -37,7 +37,9 @@ describe('MemoryStorage.consume', () => {
 
     it('returns null and deletes an expired secret', async () => {
         const storage = new MemoryStorage();
-        const record = makeRecord({ expiresAt: Math.floor(Date.now() / 1000) - 1 });
+        const record = makeRecord({
+            expiresAt: Math.floor(Date.now() / 1000) - 1,
+        });
         await storage.save(record, 3600);
 
         expect(await storage.consume('test-id')).toBeNull();

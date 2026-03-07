@@ -120,14 +120,18 @@ describe('@whisper/core app', () => {
 
         const { id } = (await createRes.json()) as { id: string };
 
-        const deleteRes = await app.request(`/api/secrets/${id}`, { method: 'DELETE' });
+        const deleteRes = await app.request(`/api/secrets/${id}`, {
+            method: 'DELETE',
+        });
         expect(deleteRes.status).toBe(200);
 
         // Gone after delete
         expect((await app.request(`/api/secrets/${id}`)).status).toBe(404);
 
         // Second delete returns 404
-        const secondDelete = await app.request(`/api/secrets/${id}`, { method: 'DELETE' });
+        const secondDelete = await app.request(`/api/secrets/${id}`, {
+            method: 'DELETE',
+        });
         expect(secondDelete.status).toBe(404);
     });
 });

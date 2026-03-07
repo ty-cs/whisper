@@ -9,6 +9,7 @@
     },
     "dependencies": {
         "@whisper/core": "workspace:*",
-        "@upstash/redis": "^1.34.0"
+        "@upstash/redis": "^1.34.0",
+        "hono": "^4.0.0"
     }
 }
