@@ -4,11 +4,25 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-var version = "1.0.0"
+// version is set at build time via -ldflags "-X main.version=x.y.z".
+// Falls back to module build info (go install), then "dev".
+var version = ""
+
+func resolveVersion() string {
+	if version != "" {
+		return strings.TrimPrefix(version, "v")
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	return "dev"
+}
 
 // DefaultAPIURL points to the globally deployed Vercel instance.
 var DefaultAPIURL = "https://whisper-core.vercel.app"
@@ -44,7 +58,7 @@ which browsers and servers never transmit.`,
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("whisper v%s\n", version)
+			fmt.Printf("whisper v%s\n", resolveVersion())
 		},
 	})
 
