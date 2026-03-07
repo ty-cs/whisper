@@ -26,3 +26,5 @@ Thumbs.db
 *.swo
 .vercel
 .env*.local
+
+.claude/worktrees/

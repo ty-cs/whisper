@@ -49,6 +49,7 @@ which browsers and servers never transmit.`,
 	})
 
 	if err := root.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }

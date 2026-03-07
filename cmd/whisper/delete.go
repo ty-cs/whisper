@@ -19,7 +19,7 @@ func deleteCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, _, serverURL, err := parseWhisperURL(args[0])
 			if err != nil {
-				return fmt.Errorf("parsing URL: %w", err)
+				return err
 			}
 
 			// --server flag overrides the URL's host

@@ -71,7 +71,7 @@ func (c *Client) CreateSecret(req *CreateRequest) (*CreateResponse, error) {
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
+		return nil, fmt.Errorf("could not reach the server — check your internet connection")
 	}
 	defer resp.Body.Close()
 
@@ -83,7 +83,14 @@ func (c *Client) CreateSecret(req *CreateRequest) (*CreateResponse, error) {
 	if resp.StatusCode != 201 {
 		var errResp ErrorResponse
 		json.Unmarshal(respBody, &errResp)
-		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, errResp.Error)
+		switch resp.StatusCode {
+		case 400:
+			return nil, fmt.Errorf("invalid request: %s", errResp.Error)
+		case 429:
+			return nil, fmt.Errorf("rate limited — please wait before creating another secret")
+		default:
+			return nil, fmt.Errorf("upload failed — server returned %d", resp.StatusCode)
+		}
 	}
 
 	var result CreateResponse
@@ -103,15 +110,17 @@ func (c *Client) DeleteSecret(id string) error {
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("HTTP request failed: %w", err)
+		return fmt.Errorf("could not reach the server — check your internet connection")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		respBody, _ := io.ReadAll(resp.Body)
-		var errResp ErrorResponse
-		json.Unmarshal(respBody, &errResp)
-		return fmt.Errorf("API error (%d): %s", resp.StatusCode, errResp.Error)
+		switch resp.StatusCode {
+		case 404:
+			return fmt.Errorf("secret not found — it may have already been deleted or expired")
+		default:
+			return fmt.Errorf("delete failed — server returned %d", resp.StatusCode)
+		}
 	}
 
 	return nil
@@ -121,7 +130,7 @@ func (c *Client) DeleteSecret(id string) error {
 func (c *Client) GetSecret(id string) (*GetResponse, error) {
 	resp, err := c.HTTPClient.Get(c.BaseURL + "/api/secrets/" + id)
 	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
+		return nil, fmt.Errorf("could not reach the server — check your internet connection")
 	}
 	defer resp.Body.Close()
 
@@ -131,9 +140,14 @@ func (c *Client) GetSecret(id string) (*GetResponse, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		var errResp ErrorResponse
-		json.Unmarshal(respBody, &errResp)
-		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, errResp.Error)
+		switch resp.StatusCode {
+		case 404:
+			return nil, fmt.Errorf("secret not found — it may have expired or already been read")
+		default:
+			var errResp ErrorResponse
+			json.Unmarshal(respBody, &errResp)
+			return nil, fmt.Errorf("server error (%d): %s", resp.StatusCode, errResp.Error)
+		}
 	}
 
 	var result GetResponse

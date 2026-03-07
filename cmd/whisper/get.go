@@ -49,7 +49,7 @@ The decryption key is extracted from the URL fragment (#).`,
 func runGet(rawURL, password string, quiet, jsonOutput bool) error {
 	id, keyStr, serverURL, err := parseWhisperURL(rawURL)
 	if err != nil {
-		return fmt.Errorf("parsing URL: %w", err)
+		return err
 	}
 
 	apiClient := api.NewClient(serverURL)
@@ -78,7 +78,7 @@ func headlessGet(client *api.Client, id, base58Key, password string, jsonOutput 
 	var plaintext string
 	if resp.HasPassword {
 		if password == "" {
-			return fmt.Errorf("secret is password-protected; use --password")
+			return fmt.Errorf("this secret is password-protected — run again with --password <password>")
 		}
 		saltBytes, err := base64.StdEncoding.DecodeString(resp.Salt)
 		if err != nil {
@@ -95,12 +95,12 @@ func headlessGet(client *api.Client, id, base58Key, password string, jsonOutput 
 		}
 		plaintext, err = crypto.Decrypt(payload, keyBytes)
 		if err != nil {
-			return fmt.Errorf("wrong password")
+			return fmt.Errorf("wrong password — decryption failed")
 		}
 	} else {
 		keyBytes, err := crypto.Base58ToKey(base58Key)
 		if err != nil {
-			return fmt.Errorf("invalid decryption key")
+			return fmt.Errorf("the URL appears to be missing or has a corrupted decryption key")
 		}
 		payload := &crypto.EncryptedPayload{
 			Ciphertext: resp.Ciphertext,
@@ -109,7 +109,7 @@ func headlessGet(client *api.Client, id, base58Key, password string, jsonOutput 
 		}
 		plaintext, err = crypto.Decrypt(payload, keyBytes)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt (wrong or corrupted key)")
+			return fmt.Errorf("decryption failed — the key in the URL may be wrong or the secret corrupted")
 		}
 	}
 
@@ -127,7 +127,7 @@ func headlessGet(client *api.Client, id, base58Key, password string, jsonOutput 
 func parseWhisperURL(rawURL string) (id, key, serverURL string, err error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return "", "", "", fmt.Errorf("invalid URL: %w", err)
+		return "", "", "", fmt.Errorf("%q is not a valid URL", rawURL)
 	}
 
 	// Extract the key from the fragment (#) — empty for password-protected secrets
@@ -136,7 +136,7 @@ func parseWhisperURL(rawURL string) (id, key, serverURL string, err error) {
 	// Extract the ID from the path (/s/{id})
 	pathParts := strings.Split(strings.Trim(u.Path, "/"), "/")
 	if len(pathParts) != 2 || pathParts[0] != "s" {
-		return "", "", "", fmt.Errorf("invalid whisper URL — expected path /s/<id>")
+		return "", "", "", fmt.Errorf("%q is not a valid Whisper URL\n\nExpected: https://example.com/s/<id>#<key>", rawURL)
 	}
 	id = pathParts[1]
 
