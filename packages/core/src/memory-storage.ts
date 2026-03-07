@@ -48,4 +48,41 @@ export class MemoryStorage implements StorageAdapter {
 
         return existed;
     }
+
+    // Single-process: no real concurrency risk, but implements the interface
+    // so tests exercise the same consume() code path as production.
+    async consume(id: string): Promise<SecretRecord | null> {
+        const key = `secret:${id}`;
+        const record = this.store.get(key);
+        if (!record) return null;
+
+        const now = Math.floor(Date.now() / 1000);
+
+        if (record.expiresAt < now) {
+            await this.delete(id);
+            return null;
+        }
+
+        if (record.maxViews > 0 && record.viewCount >= record.maxViews) {
+            await this.delete(id);
+            return null;
+        }
+
+        record.viewCount += 1;
+
+        const shouldBurn =
+            record.burnAfterReading ||
+            (record.maxViews > 0 && record.viewCount >= record.maxViews);
+
+        if (shouldBurn) {
+            await this.delete(id);
+        } else {
+            const remainingTtl = record.expiresAt - now;
+            if (remainingTtl > 0) {
+                await this.save(record, remainingTtl);
+            }
+        }
+
+        return { ...record };
+    }
 }

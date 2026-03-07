@@ -4,7 +4,7 @@
         "noEmit": true,
         "types": ["node"]
     },
-    "include": ["api/**/*.ts", "*.ts"],
+    "include": ["src/**/*.ts", "*.ts"],
     "references": [
         {
             "path": "../../packages/core"

@@ -74,4 +74,14 @@ export interface StorageAdapter {
      * Delete a secret by ID. Returns true if it existed.
      */
     delete(id: string): Promise<boolean>;
+
+    /**
+     * Atomically consume a secret: check expiry and view limits,
+     * increment viewCount, and delete if burned. Returns the record
+     * if accessible, null if not found, expired, or view-limited.
+     *
+     * Implementations must ensure this is atomic — no two concurrent
+     * calls should both succeed for a burn-after-reading or maxViews secret.
+     */
+    consume(id: string): Promise<SecretRecord | null>;
 }

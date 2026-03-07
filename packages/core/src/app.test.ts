@@ -56,7 +56,6 @@ describe('@whisper/core app', () => {
         const storage = new MemoryStorage();
         const app = createApp(storage);
 
-        // Create secret with burnAfterReading
         const createRes = await app.request('/api/secrets', {
             method: 'POST',
             body: JSON.stringify({
@@ -66,19 +65,69 @@ describe('@whisper/core app', () => {
                 expiresIn: '1h',
                 burnAfterReading: true,
             }),
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
         });
 
         const { id } = (await createRes.json()) as { id: string };
 
-        // First view — works
         const firstRes = await app.request(`/api/secrets/${id}`);
         expect(firstRes.status).toBe(200);
 
-        // Second view — 404
         const secondRes = await app.request(`/api/secrets/${id}`);
         expect(secondRes.status).toBe(404);
+    });
+
+    it('should enforce maxViews', async () => {
+        const storage = new MemoryStorage();
+        const app = createApp(storage);
+
+        const createRes = await app.request('/api/secrets', {
+            method: 'POST',
+            body: JSON.stringify({
+                ciphertext: 'limited',
+                iv: 'iv',
+                salt: 'salt',
+                expiresIn: '1h',
+                maxViews: 2,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        const { id } = (await createRes.json()) as { id: string };
+
+        // Views 1 and 2 succeed
+        expect((await app.request(`/api/secrets/${id}`)).status).toBe(200);
+        expect((await app.request(`/api/secrets/${id}`)).status).toBe(200);
+
+        // View 3 is rejected
+        expect((await app.request(`/api/secrets/${id}`)).status).toBe(404);
+    });
+
+    it('should delete a secret', async () => {
+        const storage = new MemoryStorage();
+        const app = createApp(storage);
+
+        const createRes = await app.request('/api/secrets', {
+            method: 'POST',
+            body: JSON.stringify({
+                ciphertext: 'delete-me',
+                iv: 'iv',
+                salt: 'salt',
+                expiresIn: '1h',
+            }),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        const { id } = (await createRes.json()) as { id: string };
+
+        const deleteRes = await app.request(`/api/secrets/${id}`, { method: 'DELETE' });
+        expect(deleteRes.status).toBe(200);
+
+        // Gone after delete
+        expect((await app.request(`/api/secrets/${id}`)).status).toBe(404);
+
+        // Second delete returns 404
+        const secondDelete = await app.request(`/api/secrets/${id}`, { method: 'DELETE' });
+        expect(secondDelete.status).toBe(404);
     });
 });

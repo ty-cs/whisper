@@ -111,42 +111,9 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
         const id = c.req.param('id');
         const storage = c.get('storage');
 
-        const record = await storage.get(id);
-
+        const record = await storage.consume(id);
         if (!record) {
             return c.json({ error: 'Secret not found or has expired' }, 404);
-        }
-
-        // Check if expired (belt and suspenders — storage TTL should handle this)
-        const now = Math.floor(Date.now() / 1000);
-        if (record.expiresAt < now) {
-            await storage.delete(id);
-            return c.json({ error: 'Secret has expired' }, 404);
-        }
-
-        // Check max views
-        if (record.maxViews > 0 && record.viewCount >= record.maxViews) {
-            await storage.delete(id);
-            return c.json({ error: 'Secret has reached its view limit' }, 404);
-        }
-
-        // Increment view count
-        record.viewCount += 1;
-
-        // If burn after reading, delete after returning
-        const shouldBurn =
-            record.burnAfterReading ||
-            (record.maxViews > 0 && record.viewCount >= record.maxViews);
-
-        if (shouldBurn) {
-            // Delete immediately
-            await storage.delete(id);
-        } else {
-            // Update view count — re-save with remaining TTL
-            const remainingTtl = record.expiresAt - now;
-            if (remainingTtl > 0) {
-                await storage.save(record, remainingTtl);
-            }
         }
 
         return c.json({
