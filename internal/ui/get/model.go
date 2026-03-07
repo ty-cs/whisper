@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,12 +27,14 @@ type (
 	fetchedMsg struct {
 		resp *api.GetResponse
 	}
+	copiedMsg struct{}
 )
 
 type state int
 
 const (
 	stateFetching state = iota
+	stateConfirmBurn // warn before consuming a burn-after-reading secret
 	statePasswordInput
 	stateDone
 	stateError
@@ -49,6 +52,8 @@ type Model struct {
 	plaintext     string
 	err           error
 	wrongPassword bool
+	burnWarning   bool // show burn notice alongside password prompt
+	copied        bool
 }
 
 func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
@@ -73,6 +78,13 @@ func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
 	}
 }
 
+func copyToClipboard(text string) tea.Cmd {
+	return func() tea.Msg {
+		_ = clipboard.WriteAll(text) // silently ignore errors (CI/headless)
+		return copiedMsg{}
+	}
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
@@ -88,6 +100,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			return m, tea.Quit
+		case "q", "Q":
+			if m.state == stateDone {
+				return m, tea.Quit
+			}
+		case "c", "C":
+			if m.state == stateDone {
+				return m, copyToClipboard(m.plaintext)
+			}
 		}
 
 		if m.state == statePasswordInput && msg.Type == tea.KeyEnter {
@@ -96,23 +116,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.decryptWithPassword(password)
 		}
 
+		if m.state == stateConfirmBurn && msg.Type == tea.KeyEnter {
+			return m, m.decryptDirect(m.fetchedResp)
+		}
+
 	case fetchedMsg:
+		m.fetchedResp = msg.resp
+		if msg.resp.BurnAfterReading && !msg.resp.HasPassword {
+			// Warn before consuming a burn-after-reading secret
+			m.state = stateConfirmBurn
+			return m, nil
+		}
 		if msg.resp.HasPassword {
-			m.fetchedResp = msg.resp
+			if msg.resp.BurnAfterReading {
+				m.burnWarning = true
+			}
 			m.state = statePasswordInput
 			m.passwordInput.Focus()
 			return m, textinput.Blink
 		}
-		// No password — decrypt immediately with the key from the URL
+		// No password, no burn warning — decrypt immediately
 		return m, m.decryptDirect(msg.resp)
 
 	case successMsg:
 		m.state = stateDone
 		m.plaintext = msg.plaintext
-		return m, tea.Quit
+		return m, nil // linger — user presses Q to quit
+
+	case copiedMsg:
+		m.copied = true
+		return m, nil
 
 	case errMsg:
-		// Check if this is a wrong password error (allow retry)
+		// Wrong password: allow retry
 		if m.state == statePasswordInput {
 			m.wrongPassword = true
 			m.passwordInput.SetValue("")
@@ -142,7 +178,16 @@ func (m Model) View() string {
 	case stateFetching:
 		s.WriteString(fmt.Sprintf("%s %s", m.spinner.View(), styles.Muted.Render("Fetching secret...")))
 
+	case stateConfirmBurn:
+		s.WriteString(styles.ErrorBox.Render("Warning: this secret will be permanently deleted after reading."))
+		s.WriteString("\n\n")
+		s.WriteString(styles.Muted.Render("[Enter] Proceed   [Esc] Quit"))
+
 	case statePasswordInput:
+		if m.burnWarning {
+			s.WriteString(styles.ErrorBox.Render("Warning: this secret will be permanently deleted after reading."))
+			s.WriteString("\n\n")
+		}
 		if m.wrongPassword {
 			s.WriteString(styles.ErrorBox.Render("Wrong password. Please try again."))
 			s.WriteString("\n\n")
@@ -154,14 +199,19 @@ func (m Model) View() string {
 		s.WriteString(styles.Muted.Render("[Enter] Decrypt   [Esc] Quit"))
 
 	case stateDone:
-		content := styles.SuccessBox.Render(m.plaintext)
-		s.WriteString(content)
+		s.WriteString(styles.SuccessBox.Render(m.plaintext))
 		s.WriteString("\n\n")
 		s.WriteString(styles.HelpText.Render("Decrypted locally. The server cannot read this."))
+		s.WriteString("\n\n")
+		if m.copied {
+			s.WriteString(styles.SuccessText.Render("Copied!   "))
+			s.WriteString(styles.Muted.Render("[Q] Quit"))
+		} else {
+			s.WriteString(styles.Muted.Render("[C] Copy to clipboard   [Q] Quit"))
+		}
 
 	case stateError:
-		content := styles.ErrorBox.Render(fmt.Sprintf("Error: %v", m.err))
-		s.WriteString(content)
+		s.WriteString(styles.ErrorBox.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
 	s.WriteString("\n")

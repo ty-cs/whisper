@@ -94,6 +94,29 @@ func (c *Client) CreateSecret(req *CreateRequest) (*CreateResponse, error) {
 	return &result, nil
 }
 
+// DeleteSecret deletes a secret by ID from the server.
+func (c *Client) DeleteSecret(id string) error {
+	req, err := http.NewRequest(http.MethodDelete, c.BaseURL+"/api/secrets/"+id, nil)
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 && resp.StatusCode != 204 {
+		respBody, _ := io.ReadAll(resp.Body)
+		var errResp ErrorResponse
+		json.Unmarshal(respBody, &errResp)
+		return fmt.Errorf("API error (%d): %s", resp.StatusCode, errResp.Error)
+	}
+
+	return nil
+}
+
 // GetSecret retrieves an encrypted secret from the server.
 func (c *Client) GetSecret(id string) (*GetResponse, error) {
 	resp, err := c.HTTPClient.Get(c.BaseURL + "/api/secrets/" + id)

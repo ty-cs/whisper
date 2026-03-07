@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/whisper/whisper/internal/api"
+	"github.com/whisper/whisper/internal/crypto"
 	createUI "github.com/whisper/whisper/internal/ui/create"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +18,14 @@ import (
 
 func createCmd() *cobra.Command {
 	var server string
+	var text string
+	var file string
+	var expires string
+	var noBurn bool
+	var maxViews int
+	var quiet bool
+	var jsonOutput bool
+	var password string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -24,31 +35,116 @@ Returns a shareable URL containing the decryption key.
 
 Reads from stdin if piped, skipping the typing interface.`,
 		Example: `  whisper create
+  whisper create --text "my secret"
+  whisper create --file credentials.txt
   echo "my secret" | whisper create
-  cat credentials.txt | whisper create`,
+  whisper create --text "inline" --expires 5m --no-burn --quiet
+  whisper create --text "json test" --json`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCreate(server)
+			return runCreate(cmd, server, text, file, expires, noBurn, maxViews, quiet, jsonOutput, password)
 		},
 	}
 
 	cmd.Flags().StringVarP(&server, "server", "s", "", "API server URL")
+	cmd.Flags().StringVarP(&text, "text", "t", "", "Secret text (skips TUI input)")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "Read secret from file (skips TUI input)")
+	cmd.Flags().StringVarP(&expires, "expires", "e", "24h", "Expiry time (5m, 1h, 24h, 7d, 30d)")
+	cmd.Flags().BoolVar(&noBurn, "no-burn", false, "Disable burn-after-reading")
+	cmd.Flags().IntVarP(&maxViews, "max-views", "m", 0, "Max view count (0=unlimited; only applies when --no-burn)")
+	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Output only the URL (no TUI)")
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, `Output JSON {"url":"...","id":"...","expiresAt":N}`)
+	cmd.Flags().StringVar(&password, "password", "", "Password-protect the secret")
 
 	return cmd
 }
 
-func runCreate(server string) error {
+func runCreate(cmd *cobra.Command, server, text, file, expires string, noBurn bool, maxViews int, quiet, jsonOutput bool, password string) error {
+	if quiet && jsonOutput {
+		return fmt.Errorf("--quiet and --json are mutually exclusive")
+	}
+
+	// Validate --expires
+	validExpiries := []string{"5m", "1h", "24h", "7d", "30d"}
+	validExpiry := false
+	for _, v := range validExpiries {
+		if v == expires {
+			validExpiry = true
+			break
+		}
+	}
+	if !validExpiry {
+		return fmt.Errorf("invalid --expires value %q; must be one of: 5m, 1h, 24h, 7d, 30d", expires)
+	}
+
+	burnAfterReading := !noBurn
 	baseURL := resolveServer(server)
 
-	// Read secret text if it was piped in
-	initialText := readPipedSecret()
+	// Determine input source and enforce mutual exclusion
+	textChanged := cmd.Flags().Changed("text")
+	fileChanged := cmd.Flags().Changed("file")
+	stdinPiped := !isTerminalStdin()
 
-	// Initialize API Client
+	sources := 0
+	if textChanged {
+		sources++
+	}
+	if fileChanged {
+		sources++
+	}
+	if stdinPiped {
+		sources++
+	}
+	if sources > 1 {
+		return fmt.Errorf("multiple input sources; use only one of --text, --file, or piped stdin")
+	}
+
+	var initialText string
+	var autoSubmit bool
+
+	if textChanged {
+		initialText = text
+		autoSubmit = true
+	} else if fileChanged {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("file not found: %s", file)
+			}
+			if os.IsPermission(err) {
+				return fmt.Errorf("permission denied: %s", file)
+			}
+			return fmt.Errorf("reading file: %w", err)
+		}
+		initialText = string(data)
+		autoSubmit = true
+	} else if stdinPiped {
+		initialText = readPipedSecret()
+		autoSubmit = true
+	}
+
+	// Headless path (--quiet or --json)
+	if quiet || jsonOutput {
+		if initialText == "" {
+			return fmt.Errorf("input required in headless mode; use --text, --file, or pipe stdin")
+		}
+		client := api.NewClient(baseURL)
+		return headlessCreate(client, initialText, expires, burnAfterReading, maxViews, password, jsonOutput)
+	}
+
+	// TUI path
 	apiClient := api.NewClient(baseURL)
-
-	// Launch the Bubbletea UI
-	m := createUI.InitialModel(apiClient, initialText)
+	opts := createUI.Options{
+		APIClient:        apiClient,
+		InitialText:      initialText,
+		AutoSubmit:       autoSubmit,
+		ExpiresIn:        expires,
+		BurnAfterReading: burnAfterReading,
+		MaxViews:         maxViews,
+		InitialPassword:  password,
+	}
+	m := createUI.InitialModel(opts)
 	p := tea.NewProgram(m)
 
 	if _, err := p.Run(); err != nil {
@@ -58,10 +154,81 @@ func runCreate(server string) error {
 	return nil
 }
 
+func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading bool, maxViews int, password string, jsonOutput bool) error {
+	var payload *crypto.EncryptedPayload
+	var hasPassword bool
+	var base58Key string
+
+	if password != "" {
+		salt := make([]byte, 16)
+		if _, err := rand.Read(salt); err != nil {
+			return fmt.Errorf("generating salt: %w", err)
+		}
+		keyBytes, err := crypto.DeriveKeyFromPassword(password, salt)
+		if err != nil {
+			return fmt.Errorf("deriving key: %w", err)
+		}
+		payload, err = crypto.EncryptWithKey(text, keyBytes, salt)
+		if err != nil {
+			return fmt.Errorf("encrypting: %w", err)
+		}
+		hasPassword = true
+	} else {
+		keyBytes, err := crypto.GenerateKey()
+		if err != nil {
+			return fmt.Errorf("generating key: %w", err)
+		}
+		var encErr error
+		payload, encErr = crypto.Encrypt(text, keyBytes)
+		if encErr != nil {
+			return fmt.Errorf("encrypting: %w", encErr)
+		}
+		base58Key = crypto.KeyToBase58(keyBytes)
+	}
+
+	mv := maxViews
+	if burnAfterReading {
+		mv = 1
+	}
+
+	req := &api.CreateRequest{
+		Ciphertext:       payload.Ciphertext,
+		IV:               payload.IV,
+		Salt:             payload.Salt,
+		ExpiresIn:        expiresIn,
+		BurnAfterReading: burnAfterReading,
+		MaxViews:         mv,
+		HasPassword:      hasPassword,
+	}
+
+	resp, err := client.CreateSecret(req)
+	if err != nil {
+		return err
+	}
+
+	var finalURL string
+	if hasPassword {
+		finalURL = fmt.Sprintf("%s/s/%s", client.BaseURL, resp.ID)
+	} else {
+		finalURL = fmt.Sprintf("%s/s/%s#%s", client.BaseURL, resp.ID, base58Key)
+	}
+
+	if jsonOutput {
+		data, _ := json.Marshal(map[string]interface{}{
+			"url":       finalURL,
+			"id":        resp.ID,
+			"expiresAt": resp.ExpiresAt,
+		})
+		fmt.Println(string(data))
+	} else {
+		fmt.Println(finalURL)
+	}
+	return nil
+}
+
 // readPipedSecret reads from stdin only if data was piped in.
 func readPipedSecret() string {
 	if !isTerminalStdin() {
-		// Pipe mode: read all of stdin
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Buffer(make([]byte, 0, 512*1024), 512*1024) // 512KB max
 		var lines []string
@@ -70,7 +237,6 @@ func readPipedSecret() string {
 		}
 		return strings.Join(lines, "\n")
 	}
-	// Interactive mode: return empty string so TUI textarea is blank
 	return ""
 }
 

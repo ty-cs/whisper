@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -29,6 +30,18 @@ const (
 var expiryOptions = []string{"5m", "1h", "24h", "7d", "30d"}
 var maxViewsOptions = []int{1, 2, 5, 10, 0} // 0 = unlimited
 
+// Options configures the create model. Flag values wire into TUI initial state
+// and serve as the headless encryption parameters.
+type Options struct {
+	APIClient        *api.Client
+	InitialText      string
+	AutoSubmit       bool
+	ExpiresIn        string // must be a valid expiryOptions value (e.g. "24h")
+	BurnAfterReading bool
+	MaxViews         int
+	InitialPassword  string
+}
+
 type Model struct {
 	apiClient *api.Client
 
@@ -40,6 +53,8 @@ type Model struct {
 
 	// Results
 	finalURL string
+	copied   bool
+	showHelp bool
 
 	// Options
 	burnAfterReading bool
@@ -57,7 +72,16 @@ type errMsg struct {
 	err error
 }
 
-func InitialModel(apiClient *api.Client, initialText string) Model {
+type copiedMsg struct{}
+
+func copyToClipboard(text string) tea.Cmd {
+	return func() tea.Msg {
+		_ = clipboard.WriteAll(text) // silently ignore errors (CI/headless)
+		return copiedMsg{}
+	}
+}
+
+func InitialModel(opts Options) Model {
 	ta := textarea.New()
 	ta.Placeholder = "Type your secret here...\n\n(Press Ctrl+S to encrypt and share, Ctrl+C to quit)"
 	ta.Focus()
@@ -69,8 +93,8 @@ func InitialModel(apiClient *api.Client, initialText string) Model {
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	ta.ShowLineNumbers = false
 
-	if initialText != "" {
-		ta.SetValue(initialText)
+	if opts.InitialText != "" {
+		ta.SetValue(opts.InitialText)
 	}
 
 	pi := textinput.New()
@@ -84,19 +108,40 @@ func InitialModel(apiClient *api.Client, initialText string) Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(styles.BrandColor)
 
+	// Map ExpiresIn string to index (default: "24h" = index 2)
+	expiryIndex := 2
+	for i, e := range expiryOptions {
+		if e == opts.ExpiresIn {
+			expiryIndex = i
+			break
+		}
+	}
+
+	// Map MaxViews to index (0 = not set → default index 0 = 1 view)
+	maxViewsIndex := 0
+	if opts.MaxViews != 0 {
+		for i, mv := range maxViewsOptions {
+			if mv == opts.MaxViews {
+				maxViewsIndex = i
+				break
+			}
+		}
+	}
+
 	m := Model{
-		apiClient:        apiClient,
+		apiClient:        opts.APIClient,
 		state:            stateInput,
 		textarea:         ta,
 		passwordInput:    pi,
 		spinner:          s,
-		burnAfterReading: true, // Default to true for maximum safety
-		expiryIndex:      2,    // Default: 24h
-		maxViewsIndex:    0,    // Default: 1 view
+		burnAfterReading: opts.BurnAfterReading,
+		expiryIndex:      expiryIndex,
+		maxViewsIndex:    maxViewsIndex,
+		passwordEnabled:  opts.InitialPassword != "",
+		password:         opts.InitialPassword,
 	}
 
-	// Auto-submit if text was piped
-	if initialText != "" {
+	if opts.AutoSubmit {
 		m.state = stateEncrypting
 	}
 
@@ -105,7 +150,6 @@ func InitialModel(apiClient *api.Client, initialText string) Model {
 
 func (m Model) Init() tea.Cmd {
 	if m.state == stateEncrypting {
-		// Immediately encrypt and render spinner
 		return tea.Batch(m.spinner.Tick, m.encryptAndUpload)
 	}
 	return textarea.Blink
@@ -123,7 +167,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyCtrlS:
 			if m.state == stateInput && strings.TrimSpace(m.textarea.Value()) != "" {
-				if m.passwordEnabled {
+				// If password enabled but not yet set, prompt for it
+				if m.passwordEnabled && m.password == "" {
 					m.state = statePasswordInput
 					m.passwordInput.Focus()
 					return m, textinput.Blink
@@ -140,8 +185,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Option toggles (only in stateInput)
+		// Option toggles (only in stateInput) — intercept before textarea
 		if m.state == stateInput {
+			// '?' must be caught before the textarea consumes it
+			if msg.String() == "?" {
+				m.showHelp = !m.showHelp
+				return m, nil
+			}
 			switch msg.String() {
 			case "ctrl+b":
 				m.burnAfterReading = !m.burnAfterReading
@@ -163,6 +213,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case successMsg:
 		m.state = stateDone
 		m.finalURL = msg.url
+		// Attempt clipboard copy; quit on copiedMsg
+		return m, copyToClipboard(msg.url)
+
+	case copiedMsg:
+		m.copied = true
 		return m, tea.Quit
 
 	case errMsg:
@@ -200,7 +255,7 @@ func (m Model) View() string {
 		s.WriteString(m.textarea.View())
 		s.WriteString("\n\n")
 
-		// Burn after reading
+		// Options status lines (always visible)
 		s.WriteString(styles.Muted.Render("[Ctrl+B] Burn after reading: "))
 		if m.burnAfterReading {
 			s.WriteString(styles.SuccessText.Render("ON"))
@@ -209,12 +264,10 @@ func (m Model) View() string {
 		}
 		s.WriteString("\n")
 
-		// Expiry
 		s.WriteString(styles.Muted.Render("[Ctrl+E] Expires in: "))
 		s.WriteString(styles.HighlightText.Render(expiryOptions[m.expiryIndex]))
 		s.WriteString("\n")
 
-		// Max views
 		s.WriteString(styles.Muted.Render("[Ctrl+V] Max views: "))
 		if m.burnAfterReading {
 			s.WriteString(styles.Muted.Render("1 (burn locked)"))
@@ -223,7 +276,6 @@ func (m Model) View() string {
 		}
 		s.WriteString("\n")
 
-		// Password
 		s.WriteString(styles.Muted.Render("[Ctrl+P] Password: "))
 		if m.passwordEnabled {
 			s.WriteString(styles.SuccessText.Render("ON"))
@@ -232,7 +284,25 @@ func (m Model) View() string {
 		}
 		s.WriteString("\n\n")
 
-		s.WriteString(styles.Muted.Render("[Ctrl+S] Submit   [Esc] Quit"))
+		if m.showHelp {
+			s.WriteString(styles.Muted.Render("Keybindings:"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [Ctrl+S]  Submit (encrypt and upload)"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [Ctrl+B]  Toggle burn-after-reading"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [Ctrl+E]  Cycle expiry time"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [Ctrl+V]  Cycle max views (when burn is OFF)"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [Ctrl+P]  Toggle password protection"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [?]       Toggle this help"))
+			s.WriteString("\n")
+			s.WriteString(styles.Muted.Render("  [Esc]     Quit"))
+		} else {
+			s.WriteString(styles.Muted.Render("[?] Help   [Ctrl+S] Submit   [Esc] Quit"))
+		}
 
 	case statePasswordInput:
 		s.WriteString(styles.Muted.Render("Enter a password for this secret:"))
@@ -264,6 +334,10 @@ func (m Model) View() string {
 			s.WriteString("\n\n")
 			s.WriteString(styles.HelpText.Render("The decryption key is embedded in the URL fragment (#). It is never sent to the server."))
 		}
+		if m.copied {
+			s.WriteString("\n")
+			s.WriteString(styles.SuccessText.Render("Copied to clipboard"))
+		}
 
 	case stateError:
 		s.WriteString(styles.ErrorBox.Render(fmt.Sprintf("Error: %v", m.err)))
@@ -280,7 +354,7 @@ func formatMaxViews(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// encryptAndUpload runs the core cryptography pipeline and posts to the API
+// encryptAndUpload runs the core cryptography pipeline and posts to the API.
 func (m Model) encryptAndUpload() tea.Msg {
 	plaintext := m.textarea.Value()
 
@@ -316,7 +390,6 @@ func (m Model) encryptAndUpload() tea.Msg {
 			return errMsg{fmt.Errorf("encrypting: %w", err)}
 		}
 
-		// Encode key and forge URL with fragment
 		base58Key := crypto.KeyToBase58(keyBytes)
 		maxViews := maxViewsOptions[m.maxViewsIndex]
 		if m.burnAfterReading {

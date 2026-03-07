@@ -31,7 +31,7 @@ which browsers and servers never transmit.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 && isURL(args[0]) {
-				return runGet(args[0])
+				return runGet(args[0], "", false, false)
 			}
 			return cmd.Help()
 		},
@@ -39,6 +39,7 @@ which browsers and servers never transmit.`,
 
 	root.AddCommand(createCmd())
 	root.AddCommand(getCmd())
+	root.AddCommand(deleteCmd())
 	root.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print version",
