@@ -1,0 +1,208 @@
+/**
+ * @whisper/crypto — Isomorphic AES-256-GCM encryption library
+ *
+ * Works in browsers (WebCrypto), Cloudflare Workers, Vercel Edge,
+ * and Node.js 20+ (globalThis.crypto).
+ */
+
+// Base58 alphabet (Bitcoin-style, no ambiguous chars)
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+export interface EncryptedPayload {
+    ciphertext: string; // base64
+    iv: string;         // base64
+    salt: string;       // base64
+}
+
+/**
+ * Generate a random 256-bit encryption key.
+ */
+export function generateKey(): Uint8Array {
+    return crypto.getRandomValues(new Uint8Array(32));
+}
+
+/**
+ * Encrypt plaintext using AES-256-GCM.
+ *
+ * @param plaintext - The text to encrypt
+ * @param key - 256-bit key (32 bytes)
+ * @returns Encrypted payload with ciphertext, IV, and salt (all base64)
+ */
+export async function encrypt(
+    plaintext: string,
+    key: Uint8Array
+): Promise<EncryptedPayload> {
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
+    const salt = crypto.getRandomValues(new Uint8Array(16)); // For future password-based key derivation
+
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        key,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt']
+    );
+
+    const encoded = new TextEncoder().encode(plaintext);
+    const ciphertext = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        cryptoKey,
+        encoded
+    );
+
+    return {
+        ciphertext: uint8ToBase64(new Uint8Array(ciphertext)),
+        iv: uint8ToBase64(iv),
+        salt: uint8ToBase64(salt),
+    };
+}
+
+/**
+ * Decrypt ciphertext using AES-256-GCM.
+ *
+ * @param payload - The encrypted payload
+ * @param key - 256-bit key (32 bytes)
+ * @returns Decrypted plaintext
+ * @throws Error if decryption fails (wrong key, tampered data)
+ */
+export async function decrypt(
+    payload: EncryptedPayload,
+    key: Uint8Array
+): Promise<string> {
+    const ciphertext = base64ToUint8(payload.ciphertext);
+    const iv = base64ToUint8(payload.iv);
+
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        key,
+        { name: 'AES-GCM' },
+        false,
+        ['decrypt']
+    );
+
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        cryptoKey,
+        ciphertext
+    );
+
+    return new TextDecoder().decode(decrypted);
+}
+
+/**
+ * Derive an encryption key from a password using PBKDF2.
+ * Used for optional password protection (double-encryption).
+ */
+export async function deriveKeyFromPassword(
+    password: string,
+    salt: Uint8Array,
+    iterations: number = 600_000
+): Promise<Uint8Array> {
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(password),
+        'PBKDF2',
+        false,
+        ['deriveBits']
+    );
+
+    const derived = await crypto.subtle.deriveBits(
+        {
+            name: 'PBKDF2',
+            salt,
+            iterations,
+            hash: 'SHA-256',
+        },
+        keyMaterial,
+        256
+    );
+
+    return new Uint8Array(derived);
+}
+
+/**
+ * Encode a Uint8Array to Base58 string (URL-safe, no ambiguous chars).
+ */
+export function uint8ToBase58(bytes: Uint8Array): string {
+    // Count leading zeros
+    let zeros = 0;
+    for (const byte of bytes) {
+        if (byte === 0) zeros++;
+        else break;
+    }
+
+    // Convert to big integer
+    let num = 0n;
+    for (const byte of bytes) {
+        num = num * 256n + BigInt(byte);
+    }
+
+    // Convert to base58
+    let result = '';
+    while (num > 0n) {
+        const remainder = Number(num % 58n);
+        num = num / 58n;
+        result = BASE58_ALPHABET[remainder] + result;
+    }
+
+    // Add leading '1's for each leading zero byte
+    return '1'.repeat(zeros) + result;
+}
+
+/**
+ * Decode a Base58 string back to Uint8Array.
+ */
+export function base58ToUint8(str: string): Uint8Array {
+    // Count leading '1's
+    let zeros = 0;
+    for (const char of str) {
+        if (char === '1') zeros++;
+        else break;
+    }
+
+    // Convert from base58 to big integer
+    let num = 0n;
+    for (const char of str) {
+        const index = BASE58_ALPHABET.indexOf(char);
+        if (index === -1) throw new Error(`Invalid base58 character: ${char}`);
+        num = num * 58n + BigInt(index);
+    }
+
+    // Convert big integer to bytes
+    const bytes: number[] = [];
+    while (num > 0n) {
+        bytes.unshift(Number(num & 0xffn));
+        num = num >> 8n;
+    }
+
+    // Add leading zero bytes
+    const result = new Uint8Array(zeros + bytes.length);
+    result.set(new Uint8Array(bytes), zeros);
+    return result;
+}
+
+// --- Base64 helpers (isomorphic) ---
+
+function uint8ToBase64(bytes: Uint8Array): string {
+    // Works in browser, Workers, and Node.js
+    if (typeof Buffer !== 'undefined') {
+        return Buffer.from(bytes).toString('base64');
+    }
+    let binary = '';
+    for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
+}
+
+function base64ToUint8(base64: string): Uint8Array {
+    if (typeof Buffer !== 'undefined') {
+        return new Uint8Array(Buffer.from(base64, 'base64'));
+    }
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
