@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -120,7 +120,11 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, noBurn bo
 		initialText = string(data)
 		autoSubmit = true
 	} else if stdinPiped {
-		initialText = readPipedSecret()
+		var err error
+		initialText, err = readPipedSecret()
+		if err != nil {
+			return err
+		}
 		autoSubmit = true
 	}
 
@@ -226,18 +230,19 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 	return nil
 }
 
-// readPipedSecret reads from stdin only if data was piped in.
-func readPipedSecret() string {
-	if !isTerminalStdin() {
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Buffer(make([]byte, 0, 512*1024), 512*1024) // 512KB max
-		var lines []string
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-		return strings.Join(lines, "\n")
+// readPipedSecret reads all of stdin (caller must ensure stdin is piped).
+// Total input is capped at 512 KB.
+func readPipedSecret() (string, error) {
+	const limit = 512 * 1024
+	lr := &io.LimitedReader{R: os.Stdin, N: limit + 1}
+	data, err := io.ReadAll(lr)
+	if err != nil {
+		return "", fmt.Errorf("reading stdin: %w", err)
 	}
-	return ""
+	if len(data) > limit {
+		return "", fmt.Errorf("stdin input exceeds 512 KB limit")
+	}
+	return strings.TrimSuffix(string(data), "\n"), nil
 }
 
 func resolveServer(flag string) string {

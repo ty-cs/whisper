@@ -8,6 +8,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -48,12 +49,16 @@ type Model struct {
 	state         state
 	spinner       spinner.Model
 	passwordInput textinput.Model
+	vp            viewport.Model
 	fetchedResp   *api.GetResponse
 	plaintext     string
 	err           error
 	wrongPassword bool
 	burnWarning   bool // show burn notice alongside password prompt
 	copied        bool
+
+	width  int
+	height int
 }
 
 func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
@@ -75,6 +80,7 @@ func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
 		state:         stateFetching,
 		spinner:       s,
 		passwordInput: pi,
+		vp:            viewport.New(0, 0),
 	}
 }
 
@@ -92,10 +98,32 @@ func (m Model) Init() tea.Cmd {
 	)
 }
 
+// viewportSize returns the dimensions for the plaintext viewport.
+// overhead: title(1) + gaps(4) + "Decrypted."(1) + footer(2) + base padding(2) = ~10
+func (m Model) viewportSize() (w, h int) {
+	const overhead = 10
+	const minHeight = 5
+	w = m.width - 4
+	if w < 20 {
+		w = 20
+	}
+	h = m.height - overhead
+	if h < minHeight {
+		h = minHeight
+	}
+	return w, h
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.vp.Width, m.vp.Height = m.viewportSize()
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
@@ -141,6 +169,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case successMsg:
 		m.state = stateDone
 		m.plaintext = msg.plaintext
+		m.vp.SetContent(msg.plaintext)
 		return m, nil // linger — user presses Q to quit
 
 	case copiedMsg:
@@ -164,6 +193,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 	case statePasswordInput:
 		m.passwordInput, cmd = m.passwordInput.Update(msg)
+	case stateDone:
+		m.vp, cmd = m.vp.Update(msg)
 	}
 	return m, cmd
 }
@@ -201,14 +232,14 @@ func (m Model) View() string {
 	case stateDone:
 		s.WriteString(styles.GutterBrand.Render(" ◆") + "  " + styles.Highlight.Render("Decrypted."))
 		s.WriteString("\n\n")
-		s.WriteString(styles.Indent.Render(m.plaintext))
+		s.WriteString(m.vp.View())
 		s.WriteString("\n\n")
 		s.WriteString(styles.Indent.Render(styles.Muted.Render("Decrypted locally. The server cannot read this.")))
 		s.WriteString("\n\n")
 		if m.copied {
 			s.WriteString(styles.GutterSuccess.Render(" ✓") + "  " + styles.SuccessText.Render("Copied!   ") + styles.Muted.Render("[Q] Quit"))
 		} else {
-			s.WriteString(styles.Muted.Render("    [C] Copy to clipboard   [Q] Quit"))
+			s.WriteString(styles.Muted.Render("    [C] Copy to clipboard   [Q] Quit   [↑/↓] Scroll   [PgUp/PgDn] Page"))
 		}
 
 	case stateError:

@@ -20,7 +20,7 @@ export type AppEnv = {
     };
 };
 
-const MAX_BODY_SIZE = 512 * 1024; // 512 KB
+const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
 
 /**
  * Create a Hono app with the given storage adapter.

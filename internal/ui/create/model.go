@@ -51,6 +51,10 @@ type Model struct {
 	spinner       spinner.Model
 	err           error
 
+	// Terminal dimensions
+	width  int
+	height int
+
 	// Results
 	finalURL string
 	copied   bool
@@ -87,7 +91,7 @@ func InitialModel(opts Options) Model {
 	ta.Focus()
 
 	ta.Prompt = "┃ "
-	ta.CharLimit = 10000
+	ta.CharLimit = 0 // unlimited
 	ta.SetWidth(60)
 	ta.SetHeight(10)
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
@@ -160,6 +164,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		w, h := m.textareaSize()
+		m.textarea.SetWidth(w)
+		m.textarea.SetHeight(h)
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -334,6 +346,23 @@ func (m Model) View() string {
 	}
 
 	return styles.Base.Render(s.String() + "\n\n")
+}
+
+// textareaSize returns the width and height for the textarea.
+// Height fills the terminal minus space for title, options bar, and footer.
+// overhead: 2 (title) + 2 (gap) + 5 (options) + 2 (gap+footer) = ~11 lines
+func (m Model) textareaSize() (w, h int) {
+	const overhead = 11
+	const minHeight = 5
+	w = m.width - 4
+	if w < 20 {
+		w = 20
+	}
+	h = m.height - overhead
+	if h < minHeight {
+		h = minHeight
+	}
+	return w, h
 }
 
 func formatMaxViews(n int) string {
