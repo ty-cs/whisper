@@ -7,10 +7,11 @@
   ],
   "scripts": {
     "dev": "bun run --filter @whisper/core dev",
-    "test": "vitest run"
+    "build": "tsc --build",
+    "test": "vitest run",
+    "typecheck": "tsc --build"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.10",
     "@types/node": "^25.3.5",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

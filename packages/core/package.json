@@ -3,10 +3,10 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
-    "main": "./src/app.ts",
-    "types": "./src/app.ts",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
     "exports": {
-        ".": "./src/app.ts",
+        ".": "./src/index.ts",
         "./storage": "./src/storage.ts"
     },
     "scripts": {

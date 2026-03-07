@@ -12,23 +12,8 @@
         "declarationMap": true,
         "sourceMap": true,
         "lib": [
-            "ES2022",
-            "DOM"
-        ],
-        "types": [
-            "node"
-        ],
-        "paths": {
-            "@whisper/core": [
-                "./packages/core/src/app.ts"
-            ],
-            "@whisper/core/*": [
-                "./packages/core/src/*"
-            ],
-            "@whisper/crypto": [
-                "./packages/crypto/src/index.ts"
-            ]
-        }
+            "ES2022"
+        ]
     },
     "references": [
         {
