@@ -1,15 +1,16 @@
 {
     "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "noEmit": true
+        "composite": true,
+        "outDir": "./dist",
+        "rootDir": "./src"
     },
     "include": [
-        "api/**/*.ts",
-        "*.ts"
+        "src/**/*.ts"
     ],
     "references": [
         {
-            "path": "../../packages/core"
+            "path": "../crypto"
         }
     ]
 }

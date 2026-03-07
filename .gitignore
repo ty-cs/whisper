@@ -2,8 +2,9 @@
 node_modules/
 
 # Build outputs
-whisper
+/whisper
 dist/
+*.tsbuildinfo
 *.exe
 
 # Environment

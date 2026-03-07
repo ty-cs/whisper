@@ -4,8 +4,8 @@
  */
 
 import { handle } from 'hono/vercel';
-import { createApp } from '../../packages/core/src/app.js';
-import { UpstashStorage } from '../vercel/upstash-storage.js';
+import { createApp } from '@whisper/core';
+import { UpstashStorage } from '../upstash-storage.js';
 
 const storage = new UpstashStorage(
     process.env.UPSTASH_REDIS_REST_URL!,

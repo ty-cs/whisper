@@ -11,10 +11,39 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "outDir": "./dist",
-        "rootDir": "./src",
         "lib": [
-            "ES2022"
-        ]
-    }
+            "ES2022",
+            "DOM"
+        ],
+        "types": [
+            "node"
+        ],
+        "paths": {
+            "@whisper/core": [
+                "./packages/core/src/app.ts"
+            ],
+            "@whisper/core/*": [
+                "./packages/core/src/*"
+            ],
+            "@whisper/crypto": [
+                "./packages/crypto/src/index.ts"
+            ]
+        }
+    },
+    "references": [
+        {
+            "path": "./packages/crypto"
+        },
+        {
+            "path": "./packages/core"
+        },
+        {
+            "path": "./platforms/vercel"
+        }
+    ],
+    "files": [],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
 }
