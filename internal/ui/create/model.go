@@ -327,15 +327,13 @@ func (m Model) View() string {
 		if m.copied {
 			s.WriteString("\n\n")
 			s.WriteString(styles.GutterSuccess.Render(" ✓") + "  " + styles.SuccessText.Render("Copied to clipboard"))
-			s.WriteString("\n")
 		}
 
 	case stateError:
 		s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
-	s.WriteString("\n")
-	return styles.Base.Render(s.String())
+	return styles.Base.Render(s.String() + "\n\n")
 }
 
 func formatMaxViews(n int) string {

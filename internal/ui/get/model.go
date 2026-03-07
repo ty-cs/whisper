@@ -207,7 +207,6 @@ func (m Model) View() string {
 		s.WriteString("\n\n")
 		if m.copied {
 			s.WriteString(styles.GutterSuccess.Render(" ✓") + "  " + styles.SuccessText.Render("Copied!   ") + styles.Muted.Render("[Q] Quit"))
-			s.WriteString("\n")
 		} else {
 			s.WriteString(styles.Muted.Render("    [C] Copy to clipboard   [Q] Quit"))
 		}
@@ -216,8 +215,7 @@ func (m Model) View() string {
 		s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
-	s.WriteString("\n")
-	return styles.Base.Render(s.String())
+	return styles.Base.Render(s.String() + "\n\n")
 }
 
 // fetch fetches the encrypted payload from the server without decrypting.
