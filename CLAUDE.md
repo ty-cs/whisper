@@ -73,6 +73,8 @@ platforms/
 
 **`@whisper/vercel`** (`platforms/vercel/`) — wires `createApp` with `UpstashStorage` (Upstash Redis via HTTP). Entry point is `api/index.ts` as a Vercel Edge Function. Deploy with `vercel --prod` from `platforms/vercel/`.
 
+> **Local dev:** Run `vercel dev` from the **repo root**, not from `platforms/vercel/`. The root `vercel.json` configures the correct routing for local development.
+
 ### Go module
 
 ```
