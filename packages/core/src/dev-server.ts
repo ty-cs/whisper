@@ -15,12 +15,12 @@ const storage = new MemoryStorage();
 const app = createApp(storage);
 
 serve(
-  {
-    fetch: app.fetch,
-    port: PORT,
-  },
-  (info) => {
-    console.log(`
+    {
+        fetch: app.fetch,
+        port: PORT,
+    },
+    (info) => {
+        console.log(`
   🤫 whisper dev server
 
   ➜ http://localhost:${info.port}
@@ -29,5 +29,5 @@ serve(
   Using in-memory storage (secrets will be lost on restart)
   Press Ctrl+C to stop
 `);
-  },
+    },
 );
