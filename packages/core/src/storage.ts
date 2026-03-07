@@ -3,6 +3,7 @@
  * between Upstash Redis, Cloudflare KV, DynamoDB, SQLite, etc.
  */
 
+// biome-ignore format: preserve vertical alignment for better readability
 export interface SecretRecord {
     id: string;
     ciphertext: string;      // base64 AES-256-GCM ciphertext
@@ -20,7 +21,7 @@ export interface CreateSecretInput {
     ciphertext: string;
     iv: string;
     salt: string;
-    expiresIn: string;       // "5m" | "1h" | "24h" | "7d" | "30d"
+    expiresIn: string; // "5m" | "1h" | "24h" | "7d" | "30d"
     burnAfterReading?: boolean;
     maxViews?: number;
     hasPassword?: boolean;
@@ -37,10 +38,14 @@ export function parseDuration(duration: string): number {
     const unit = match[2];
 
     switch (unit) {
-        case 'm': return value * 60;
-        case 'h': return value * 3600;
-        case 'd': return value * 86400;
-        default: throw new Error(`Unknown unit: ${unit}`);
+        case 'm':
+            return value * 60;
+        case 'h':
+            return value * 3600;
+        case 'd':
+            return value * 86400;
+        default:
+            throw new Error(`Unknown unit: ${unit}`);
     }
 }
 

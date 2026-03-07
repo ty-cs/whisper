@@ -4,7 +4,7 @@
  */
 
 import { Redis } from '@upstash/redis';
-import type { StorageAdapter, SecretRecord } from '@whisper/core/storage';
+import type { SecretRecord, StorageAdapter } from '@whisper/core/storage';
 
 export class UpstashStorage implements StorageAdapter {
     private redis: Redis;

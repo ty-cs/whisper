@@ -14,11 +14,13 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const storage = new MemoryStorage();
 const app = createApp(storage);
 
-serve({
-    fetch: app.fetch,
-    port: PORT,
-}, (info) => {
-    console.log(`
+serve(
+    {
+        fetch: app.fetch,
+        port: PORT,
+    },
+    (info) => {
+        console.log(`
   🤫 whisper dev server
 
   ➜ http://localhost:${info.port}
@@ -27,4 +29,5 @@ serve({
   Using in-memory storage (secrets will be lost on restart)
   Press Ctrl+C to stop
 `);
-});
+    },
+);

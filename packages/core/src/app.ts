@@ -7,11 +7,11 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { nanoid } from 'nanoid';
 import {
-    type StorageAdapter,
-    type SecretRecord,
     type CreateSecretInput,
-    parseDuration,
     EXPIRY_OPTIONS,
+    parseDuration,
+    type SecretRecord,
+    type StorageAdapter,
 } from './storage.js';
 
 export type AppEnv = {
@@ -52,20 +52,26 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
 
         // Validate required fields
         if (!body.ciphertext || !body.iv || !body.salt) {
-            return c.json({ error: 'Missing required fields: ciphertext, iv, salt' }, 400);
+            return c.json(
+                { error: 'Missing required fields: ciphertext, iv, salt' },
+                400,
+            );
         }
 
         // Validate expiry
         const expiresIn = body.expiresIn || '24h';
         if (!EXPIRY_OPTIONS.includes(expiresIn as any)) {
             return c.json(
-                { error: `Invalid expiresIn. Must be one of: ${EXPIRY_OPTIONS.join(', ')}` },
-                400
+                {
+                    error: `Invalid expiresIn. Must be one of: ${EXPIRY_OPTIONS.join(', ')}`,
+                },
+                400,
             );
         }
 
         // Validate payload size (approximate — base64 encoded)
-        const payloadSize = body.ciphertext.length + body.iv.length + body.salt.length;
+        const payloadSize =
+            body.ciphertext.length + body.iv.length + body.salt.length;
         if (payloadSize > MAX_BODY_SIZE) {
             return c.json({ error: 'Payload too large. Maximum 512 KB.' }, 413);
         }
@@ -96,7 +102,7 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
                 expiresAt: record.expiresAt,
                 burnAfterReading: record.burnAfterReading,
             },
-            201
+            201,
         );
     });
 

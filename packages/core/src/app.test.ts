@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { MemoryStorage } from './memory-storage.js';
 
@@ -10,7 +10,7 @@ describe('@whisper/core app', () => {
         const res = await app.request('/api/health');
         expect(res.status).toBe(200);
 
-        const body = await res.json() as { status: string };
+        const body = (await res.json()) as { status: string };
         expect(body.status).toBe('ok');
     });
 
@@ -33,14 +33,14 @@ describe('@whisper/core app', () => {
         });
 
         expect(createRes.status).toBe(201);
-        const { id } = await createRes.json() as { id: string };
+        const { id } = (await createRes.json()) as { id: string };
         expect(id).toBeDefined();
 
         // Retrieve secret
         const getRes = await app.request(`/api/secrets/${id}`);
         expect(getRes.status).toBe(200);
 
-        const secret = await getRes.json() as { ciphertext: string };
+        const secret = (await getRes.json()) as { ciphertext: string };
         expect(secret.ciphertext).toBe('test-ciphertext');
     });
 
@@ -71,7 +71,7 @@ describe('@whisper/core app', () => {
             },
         });
 
-        const { id } = await createRes.json() as { id: string };
+        const { id } = (await createRes.json()) as { id: string };
 
         // First view — works
         const firstRes = await app.request(`/api/secrets/${id}`);

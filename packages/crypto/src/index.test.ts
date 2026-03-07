@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-    generateKey,
-    encrypt,
-    decrypt,
-    uint8ToBase58,
     base58ToUint8,
+    decrypt,
     deriveKeyFromPassword,
+    encrypt,
+    generateKey,
+    uint8ToBase58,
 } from './index.js';
 
 describe('@whisper/crypto', () => {

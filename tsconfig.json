@@ -11,9 +11,7 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "lib": [
-            "ES2022"
-        ]
+        "lib": ["ES2022"]
     },
     "references": [
         {
@@ -27,8 +25,5 @@
         }
     ],
     "files": [],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+    "exclude": ["node_modules", "dist"]
 }

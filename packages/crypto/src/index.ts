@@ -6,12 +6,13 @@
  */
 
 // Base58 alphabet (Bitcoin-style, no ambiguous chars)
-const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const BASE58_ALPHABET =
+    '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 export interface EncryptedPayload {
     ciphertext: string; // base64
-    iv: string;         // base64
-    salt: string;       // base64
+    iv: string; // base64
+    salt: string; // base64
 }
 
 /**
@@ -30,7 +31,7 @@ export function generateKey(): Uint8Array {
  */
 export async function encrypt(
     plaintext: string,
-    key: Uint8Array
+    key: Uint8Array,
 ): Promise<EncryptedPayload> {
     const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
     const salt = crypto.getRandomValues(new Uint8Array(16)); // For future password-based key derivation
@@ -40,14 +41,14 @@ export async function encrypt(
         key.buffer as ArrayBuffer,
         { name: 'AES-GCM' },
         false,
-        ['encrypt']
+        ['encrypt'],
     );
 
     const encoded = new TextEncoder().encode(plaintext);
     const ciphertext = await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer },
         cryptoKey,
-        encoded
+        encoded,
     );
 
     return {
@@ -67,7 +68,7 @@ export async function encrypt(
  */
 export async function decrypt(
     payload: EncryptedPayload,
-    key: Uint8Array
+    key: Uint8Array,
 ): Promise<string> {
     const ciphertext = base64ToUint8(payload.ciphertext);
     const iv = base64ToUint8(payload.iv);
@@ -77,13 +78,13 @@ export async function decrypt(
         key.buffer as ArrayBuffer,
         { name: 'AES-GCM' },
         false,
-        ['decrypt']
+        ['decrypt'],
     );
 
     const decrypted = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer },
         cryptoKey,
-        ciphertext.buffer as ArrayBuffer
+        ciphertext.buffer as ArrayBuffer,
     );
 
     return new TextDecoder().decode(decrypted);
@@ -96,14 +97,14 @@ export async function decrypt(
 export async function deriveKeyFromPassword(
     password: string,
     salt: Uint8Array,
-    iterations: number = 600_000
+    iterations: number = 600_000,
 ): Promise<Uint8Array> {
     const keyMaterial = await crypto.subtle.importKey(
         'raw',
         new TextEncoder().encode(password).buffer as ArrayBuffer,
         'PBKDF2',
         false,
-        ['deriveBits']
+        ['deriveBits'],
     );
 
     const derived = await crypto.subtle.deriveBits(
@@ -114,7 +115,7 @@ export async function deriveKeyFromPassword(
             hash: 'SHA-256',
         },
         keyMaterial,
-        256
+        256,
     );
 
     return new Uint8Array(derived);

@@ -3,7 +3,7 @@
  * Secrets are stored in a Map with setTimeout-based TTL expiry.
  */
 
-import type { StorageAdapter, SecretRecord } from './storage.js';
+import type { SecretRecord, StorageAdapter } from './storage.js';
 
 export class MemoryStorage implements StorageAdapter {
     private store = new Map<string, SecretRecord>();
