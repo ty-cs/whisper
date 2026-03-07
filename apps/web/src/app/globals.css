@@ -3,7 +3,7 @@
 :root {
   --background: #09090b;
   --foreground: #e4e4e7;
-  --muted: #18181b;
+  --muted: #27272a;
   --muted-fg: #71717a;
   --border: #27272a;
 }
@@ -14,12 +14,26 @@
   --color-primary: var(--foreground);
   --font-mono: var(--font-jetbrains-mono);
 
-  --animate-fade-in-up: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in-up: fade-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+
+  @keyframes processing {
+
+    0%,
+    100% {
+      opacity: 0.8;
+      background-position: 0% 50%;
+    }
+
+    50% {
+      opacity: 1;
+      background-position: 100% 50%;
+    }
+  }
 
   @keyframes fade-in-up {
     0% {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateY(4px);
     }
 
     100% {
@@ -51,7 +65,7 @@ body {
 }
 
 .animate-blink {
-  animation: blink 1s step-end infinite;
+  animation: blink 0.8s ease-in-out infinite;
 }
 
 .delay-100 {
@@ -76,7 +90,7 @@ body {
 
 @layer utilities {
   .term-card {
-    @apply border border-[var(--border)] p-4 sm:p-8 bg-transparent relative;
+    @apply border border-[var(--border)] p-4 sm:p-8 bg-transparent relative rounded-none;
   }
 
   .term-card::after {
@@ -86,17 +100,22 @@ body {
 
   /* term-btn is outline by default, filled on hover */
   .term-btn {
-    @apply flex items-center justify-center gap-2 bg-transparent text-[var(--foreground)] border border-[var(--border)] font-bold px-4 py-2 hover:bg-[var(--foreground)] hover:text-[#050505] transition-colors duration-0 uppercase font-mono tracking-widest active:bg-white active:text-[#050505];
+    @apply flex items-center justify-center gap-2 bg-transparent text-[var(--foreground)] border border-[var(--border)] font-bold px-4 py-2 hover:bg-[var(--foreground)] hover:text-[#050505] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest active:scale-[0.99] rounded-none disabled:opacity-30;
   }
 
-  .term-btn:hover,
-  .term-btn:active {
-    text-shadow: none;
-  }
-
-  /* term-btn-primary is filled by default, outline on hover */
   .term-btn-primary {
-    @apply flex items-center justify-center gap-2 bg-[var(--foreground)] text-[#050505] border border-[var(--border)] font-bold px-4 py-2 hover:bg-transparent hover:text-[var(--foreground)] transition-colors duration-0 uppercase font-mono tracking-widest;
+    @apply flex items-center justify-center gap-2 bg-[var(--foreground)] text-[#050505] border border-[var(--border)] font-bold px-4 py-2 hover:bg-transparent hover:text-[var(--foreground)] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest rounded-none disabled:opacity-30;
+  }
+
+  .term-btn-processing {
+    background: linear-gradient(-45deg,
+        var(--foreground),
+        var(--muted),
+        var(--foreground),
+        var(--muted));
+    background-size: 400% 400%;
+    animation: processing 1.5s ease infinite;
+    @apply text-[#050505] cursor-wait border-[var(--foreground)] opacity-90;
   }
 
   .term-btn-primary:not(:hover) {
@@ -104,7 +123,7 @@ body {
   }
 
   .term-input {
-    @apply bg-transparent text-[var(--foreground)] border border-transparent border-b-[var(--border)] px-2 py-2 w-full focus:outline-none focus:border-[var(--foreground)] focus:bg-[var(--muted)]/40 hover:bg-[var(--muted)]/20 transition-colors duration-0 font-mono;
+    @apply bg-transparent text-[var(--foreground)] border border-transparent border-b-[var(--border)] px-2 py-2 w-full outline-none focus:outline-none focus:border-[var(--foreground)] focus:bg-[var(--muted)]/40 hover:bg-[var(--muted)]/20 transition-all duration-100 ease-in-out font-mono appearance-none;
   }
 
   .term-input::placeholder {
@@ -116,7 +135,7 @@ body {
 /* View Transitions */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.6s;
+  animation-duration: 0.4s;
   animation-timing-function: var(--ease-brutal);
 }
 
@@ -153,7 +172,7 @@ body {
 }
 
 .animate-pop-in {
-  animation: pop-in 0.6s var(--ease-brutal) forwards;
+  animation: pop-in 0.4s var(--ease-brutal) forwards;
 }
 
 @keyframes pop-in {
