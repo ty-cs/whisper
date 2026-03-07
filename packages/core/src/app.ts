@@ -73,7 +73,7 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
         const payloadSize =
             body.ciphertext.length + body.iv.length + body.salt.length;
         if (payloadSize > MAX_BODY_SIZE) {
-            return c.json({ error: 'Payload too large. Maximum 512 KB.' }, 413);
+            return c.json({ error: 'Payload too large. Maximum 1 MB.' }, 413);
         }
 
         const ttlSeconds = parseDuration(expiresIn);
@@ -122,6 +122,9 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
             salt: record.salt,
             burnAfterReading: record.burnAfterReading,
             hasPassword: record.hasPassword,
+            expiresAt: record.expiresAt,
+            maxViews: record.maxViews,
+            viewCount: record.viewCount,
         });
     });
 

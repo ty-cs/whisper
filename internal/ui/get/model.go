@@ -3,7 +3,10 @@ package get
 import (
 	"encoding/base64"
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -59,6 +62,8 @@ type Model struct {
 
 	width  int
 	height int
+
+	logger *slog.Logger // non-nil only when WHISPER_DEBUG is set
 }
 
 func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
@@ -73,6 +78,14 @@ func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
 	pi.CharLimit = 256
 	pi.Width = 40
 
+	var logger *slog.Logger
+	if os.Getenv("WHISPER_DEBUG") != "" {
+		f, err := os.OpenFile(os.TempDir()+"/whisper-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if err == nil {
+			logger = slog.New(slog.NewJSONHandler(f, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		}
+	}
+
 	return Model{
 		apiClient:     apiClient,
 		secretID:      secretID,
@@ -81,6 +94,7 @@ func InitialModel(apiClient *api.Client, secretID, base58Key string) Model {
 		spinner:       s,
 		passwordInput: pi,
 		vp:            viewport.New(0, 0),
+		logger:        logger,
 	}
 }
 
@@ -150,6 +164,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case fetchedMsg:
 		m.fetchedResp = msg.resp
+		if m.logger != nil {
+			m.logger.Debug("fetchedResp",
+				"burnAfterReading", msg.resp.BurnAfterReading,
+				"hasPassword", msg.resp.HasPassword,
+				"expiresAt", msg.resp.ExpiresAt,
+				"maxViews", msg.resp.MaxViews,
+				"viewCount", msg.resp.ViewCount,
+			)
+		}
 		if msg.resp.BurnAfterReading && !msg.resp.HasPassword {
 			// Warn before consuming a burn-after-reading secret
 			m.state = stateConfirmBurn
@@ -235,6 +258,10 @@ func (m Model) View() string {
 		s.WriteString(m.vp.View())
 		s.WriteString("\n\n")
 		s.WriteString(styles.Indent.Render(styles.Muted.Render("Decrypted locally. The server cannot read this.")))
+		if m.fetchedResp != nil {
+			s.WriteString("\n")
+			s.WriteString(styles.Indent.Render(styles.Muted.Render(formatMeta(m.fetchedResp))))
+		}
 		s.WriteString("\n\n")
 		if m.copied {
 			s.WriteString(styles.GutterSuccess.Render(" ✓") + "  " + styles.SuccessText.Render("Copied!   ") + styles.Muted.Render("[Q] Quit"))
@@ -281,6 +308,48 @@ func (m Model) decryptDirect(resp *api.GetResponse) tea.Cmd {
 	}
 }
 
+// formatMeta builds a compact metadata string from the GET response.
+func formatMeta(r *api.GetResponse) string {
+	var parts []string
+
+	if r.ExpiresAt > 0 {
+		parts = append(parts, "Expires "+relativeTime(r.ExpiresAt))
+	}
+	if r.MaxViews > 0 {
+		parts = append(parts, fmt.Sprintf("View %d of %d", r.ViewCount, r.MaxViews))
+	} else if r.ViewCount > 0 {
+		parts = append(parts, fmt.Sprintf("View %d of ∞", r.ViewCount))
+	}
+	if r.HasPassword {
+		parts = append(parts, "Password protected")
+	}
+
+	return strings.Join(parts, "   ·   ")
+}
+
+// relativeTime formats a Unix timestamp as a human-readable relative duration.
+func relativeTime(unix int64) string {
+	d := time.Until(time.Unix(unix, 0))
+	if d <= 0 {
+		return "now"
+	}
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("in %ds", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("in %dm", int(d.Minutes()))
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		m := int(d.Minutes()) % 60
+		if m == 0 {
+			return fmt.Sprintf("in %dh", h)
+		}
+		return fmt.Sprintf("in %dh %dm", h, m)
+	default:
+		days := int(d.Hours() / 24)
+		return fmt.Sprintf("in %dd", days)
+	}
+}
 // decryptWithPassword derives the key from the password+salt and decrypts.
 func (m Model) decryptWithPassword(password string) tea.Cmd {
 	resp := m.fetchedResp

@@ -51,6 +51,9 @@ type GetResponse struct {
 	Salt             string `json:"salt"`
 	BurnAfterReading bool   `json:"burnAfterReading"`
 	HasPassword      bool   `json:"hasPassword"`
+	ExpiresAt        int64  `json:"expiresAt"`  // unix seconds
+	MaxViews         int    `json:"maxViews"`   // 0 = unlimited
+	ViewCount        int    `json:"viewCount"`  // views consumed so far (including this one)
 }
 
 // ErrorResponse is returned on API errors.
