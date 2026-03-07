@@ -315,32 +315,23 @@ func (m Model) View() string {
 		s.WriteString(fmt.Sprintf("%s %s", m.spinner.View(), styles.Muted.Render("Encrypting and uploading securely...")))
 
 	case stateDone:
+		s.WriteString(styles.GutterBrand.Render(" ◆") + "  " + styles.Highlight.Render("Secret encrypted and ready to share."))
+		s.WriteString("\n\n")
+		s.WriteString(styles.Indent.Render(styles.URLStyle.Render(m.finalURL)))
+		s.WriteString("\n\n")
 		if m.password != "" {
-			s.WriteString(styles.SuccessBox.Render(
-				fmt.Sprintf("%s\n\n%s",
-					styles.Highlight.Render("Secret encrypted and ready to share!"),
-					styles.URLStyle.Render(m.finalURL),
-				),
-			))
-			s.WriteString("\n\n")
-			s.WriteString(styles.HelpText.Render("Password-protected. Share the URL and password separately."))
+			s.WriteString(styles.Indent.Render(styles.Muted.Render("Password-protected. Share the URL and password separately.")))
 		} else {
-			s.WriteString(styles.SuccessBox.Render(
-				fmt.Sprintf("%s\n\n%s",
-					styles.Highlight.Render("Secret encrypted and ready to share!"),
-					styles.URLStyle.Render(m.finalURL),
-				),
-			))
-			s.WriteString("\n\n")
-			s.WriteString(styles.HelpText.Render("The decryption key is embedded in the URL fragment (#). It is never sent to the server."))
+			s.WriteString(styles.Indent.Render(styles.Muted.Render("The decryption key is in the URL fragment (#). It is never sent to the server.")))
 		}
 		if m.copied {
+			s.WriteString("\n\n")
+			s.WriteString(styles.GutterSuccess.Render(" ✓") + "  " + styles.SuccessText.Render("Copied to clipboard"))
 			s.WriteString("\n")
-			s.WriteString(styles.SuccessText.Render("Copied to clipboard"))
 		}
 
 	case stateError:
-		s.WriteString(styles.ErrorBox.Render(fmt.Sprintf("Error: %v", m.err)))
+		s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
 	s.WriteString("\n")

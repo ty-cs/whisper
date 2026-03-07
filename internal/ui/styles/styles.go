@@ -9,6 +9,7 @@ var (
 	BrandColor     = lipgloss.Color("#00BFFF") // Deep Sky Blue (Primary)
 	SuccessColor   = lipgloss.Color("#10B981") // Emerald Green
 	WarningColor   = lipgloss.Color("#EF4444") // Red
+	WarnColor      = lipgloss.Color("#F9E2AF") // Amber (non-fatal warnings)
 	BgColor        = lipgloss.Color("#1E1E2E") // Dark Charcoal
 	SubtleColor    = lipgloss.Color("#6C7086") // Muted text
 	BorderColor    = lipgloss.Color("#313244") // Subtle border
@@ -20,17 +21,14 @@ var (
 	Base = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#CDD6F4"))
 
-	// Layout elements
-	BoxContainer = Base.
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(BorderColor).
-			Padding(1, 2)
+	// Gutter symbols for borderless layout
+	GutterBrand = lipgloss.NewStyle().Foreground(BrandColor).Bold(true)
+	GutterSuccess = lipgloss.NewStyle().Foreground(SuccessColor).Bold(true)
+	GutterError   = lipgloss.NewStyle().Foreground(WarningColor).Bold(true)
+	GutterWarn    = lipgloss.NewStyle().Foreground(WarnColor).Bold(true)
 
-	SuccessBox = BoxContainer.Copy().
-			BorderForeground(SuccessColor)
-
-	ErrorBox = BoxContainer.Copy().
-			BorderForeground(WarningColor)
+	// Indent body text to align with gutter content
+	Indent = lipgloss.NewStyle().MarginLeft(4)
 
 	// Typography
 	Title = lipgloss.NewStyle().

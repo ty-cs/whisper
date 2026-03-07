@@ -179,17 +179,17 @@ func (m Model) View() string {
 		s.WriteString(fmt.Sprintf("%s %s", m.spinner.View(), styles.Muted.Render("Fetching secret...")))
 
 	case stateConfirmBurn:
-		s.WriteString(styles.ErrorBox.Render("Warning: this secret will be permanently deleted after reading."))
+		s.WriteString(styles.GutterWarn.Render(" ⚠") + "  " + styles.HighlightText.Render("This secret will be permanently deleted after reading."))
 		s.WriteString("\n\n")
-		s.WriteString(styles.Muted.Render("[Enter] Proceed   [Esc] Quit"))
+		s.WriteString(styles.Indent.Render(styles.Muted.Render("[Enter] Proceed   [Esc] Quit")))
 
 	case statePasswordInput:
 		if m.burnWarning {
-			s.WriteString(styles.ErrorBox.Render("Warning: this secret will be permanently deleted after reading."))
+			s.WriteString(styles.GutterWarn.Render(" ⚠") + "  " + styles.HighlightText.Render("This secret will be permanently deleted after reading."))
 			s.WriteString("\n\n")
 		}
 		if m.wrongPassword {
-			s.WriteString(styles.ErrorBox.Render("Wrong password. Please try again."))
+			s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render("Wrong password. Please try again."))
 			s.WriteString("\n\n")
 		}
 		s.WriteString(styles.Muted.Render("This secret is password-protected:"))
@@ -199,19 +199,21 @@ func (m Model) View() string {
 		s.WriteString(styles.Muted.Render("[Enter] Decrypt   [Esc] Quit"))
 
 	case stateDone:
-		s.WriteString(styles.SuccessBox.Render(m.plaintext))
+		s.WriteString(styles.GutterBrand.Render(" ◆") + "  " + styles.Highlight.Render("Decrypted."))
 		s.WriteString("\n\n")
-		s.WriteString(styles.HelpText.Render("Decrypted locally. The server cannot read this."))
+		s.WriteString(styles.Indent.Render(m.plaintext))
+		s.WriteString("\n\n")
+		s.WriteString(styles.Indent.Render(styles.Muted.Render("Decrypted locally. The server cannot read this.")))
 		s.WriteString("\n\n")
 		if m.copied {
-			s.WriteString(styles.SuccessText.Render("Copied!   "))
-			s.WriteString(styles.Muted.Render("[Q] Quit"))
+			s.WriteString(styles.GutterSuccess.Render(" ✓") + "  " + styles.SuccessText.Render("Copied!   ") + styles.Muted.Render("[Q] Quit"))
+			s.WriteString("\n")
 		} else {
-			s.WriteString(styles.Muted.Render("[C] Copy to clipboard   [Q] Quit"))
+			s.WriteString(styles.Muted.Render("    [C] Copy to clipboard   [Q] Quit"))
 		}
 
 	case stateError:
-		s.WriteString(styles.ErrorBox.Render(fmt.Sprintf("Error: %v", m.err)))
+		s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
 	s.WriteString("\n")
