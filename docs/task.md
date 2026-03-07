@@ -6,7 +6,7 @@
 - [x] Storage adapter interface (TypeScript)
 - [x] Hono API core (CRUD, burn-after-reading, TTL, max views)
 - [x] In-memory storage adapter (dev/testing)
-- [x] Local dev server (`@hono/node-server`)
+- [x] Local dev server (`Bun.serve`)
 - [x] Go CLI with Cobra (`create`, `get`, `version`)
 - [x] Go Terminal UI (Bubbletea implementation begun)
 
