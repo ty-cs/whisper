@@ -6,9 +6,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"math/big"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -55,6 +58,44 @@ func Encrypt(plaintext string, key []byte) (*EncryptedPayload, error) {
 	// 16-byte salt (for future password-based key derivation)
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, iv, []byte(plaintext), nil)
+
+	return &EncryptedPayload{
+		Ciphertext: base64.StdEncoding.EncodeToString(ciphertext),
+		IV:         base64.StdEncoding.EncodeToString(iv),
+		Salt:       base64.StdEncoding.EncodeToString(salt),
+	}, nil
+}
+
+// DeriveKeyFromPassword derives a 32-byte AES key from a password and salt using
+// PBKDF2-SHA256 with 600,000 iterations — interoperable with @whisper/crypto.
+func DeriveKeyFromPassword(password string, salt []byte) ([]byte, error) {
+	key := pbkdf2.Key([]byte(password), salt, 600_000, 32, sha256.New)
+	return key, nil
+}
+
+// EncryptWithKey encrypts plaintext using AES-256-GCM with a provided key and salt.
+// Use this when the salt must be preserved externally (e.g. for password-derived keys).
+func EncryptWithKey(plaintext string, key []byte, salt []byte) (*EncryptedPayload, error) {
+	if len(key) != 32 {
+		return nil, errors.New("key must be 32 bytes (256 bits)")
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	iv := make([]byte, 12)
+	if _, err := rand.Read(iv); err != nil {
 		return nil, err
 	}
 

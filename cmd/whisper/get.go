@@ -60,11 +60,8 @@ func parseWhisperURL(rawURL string) (id, key, serverURL string, err error) {
 		return "", "", "", fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Extract the key from the fragment (#)
+	// Extract the key from the fragment (#) — empty for password-protected secrets
 	key = u.Fragment
-	if key == "" {
-		return "", "", "", fmt.Errorf("invalid whisper URL — missing decryption key in fragment (#)")
-	}
 
 	// Extract the ID from the path (/s/{id})
 	pathParts := strings.Split(strings.Trim(u.Path, "/"), "/")
