@@ -5,9 +5,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/whisper/whisper/internal/api"
-	wcrypto "github.com/whisper/whisper/internal/crypto"
+	getUI "github.com/whisper/whisper/internal/ui/get"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 )
 
 func getCmd() *cobra.Command {
@@ -30,71 +32,49 @@ The decryption key is extracted from the URL fragment (#).`,
 }
 
 func runGet(rawURL string) error {
-	// Parse the whisper URL
+	// 1. Parse the whisper URL
 	id, keyStr, serverURL, err := parseWhisperURL(rawURL)
 	if err != nil {
 		return fmt.Errorf("parsing URL: %w", err)
 	}
 
-	// Decode the Base58 key
-	key, err := wcrypto.Base58ToKey(keyStr)
-	if err != nil {
-		return fmt.Errorf("decoding key: %w", err)
-	}
+	// 2. Initialize API Client
+	apiClient := api.NewClient(serverURL)
 
-	// Fetch ciphertext from server
-	client := api.NewClient(serverURL)
-	resp, err := client.GetSecret(id)
-	if err != nil {
-		return err
-	}
+	// 3. Launch the Bubbletea UI
+	m := getUI.InitialModel(apiClient, id, keyStr)
+	p := tea.NewProgram(m)
 
-	// Decrypt locally
-	plaintext, err := wcrypto.Decrypt(&wcrypto.EncryptedPayload{
-		Ciphertext: resp.Ciphertext,
-		IV:         resp.IV,
-		Salt:       resp.Salt,
-	}, key)
-	if err != nil {
-		return fmt.Errorf("decrypting: %w", err)
-	}
-
-	// Output
-	if isTerminal() {
-		fmt.Println()
-		fmt.Println("  🔓 Decrypted secret:")
-		fmt.Println()
-		fmt.Printf("  %s\n", plaintext)
-		fmt.Println()
-		if resp.BurnAfterReading {
-			fmt.Println("  🔥 This secret has been destroyed")
-		}
-	} else {
-		fmt.Print(plaintext)
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("UI crashed: %w", err)
 	}
 
 	return nil
 }
 
 // parseWhisperURL extracts secret ID, key, and server base URL from
-// a URL like https://host/#/s/SECRET_ID/BASE58_KEY
+// a URL like https://host/s/SECRET_ID#BASE58_KEY
 func parseWhisperURL(rawURL string) (id, key, serverURL string, err error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", "", "", fmt.Errorf("invalid URL: %w", err)
 	}
 
-	fragment := u.Fragment // "/s/abc123/7KxB9..."
-	parts := strings.Split(strings.Trim(fragment, "/"), "/")
-
-	if len(parts) != 3 || parts[0] != "s" {
-		return "", "", "", fmt.Errorf("invalid whisper URL — expected #/s/<id>/<key>")
+	// Extract the key from the fragment (#)
+	key = u.Fragment
+	if key == "" {
+		return "", "", "", fmt.Errorf("invalid whisper URL — missing decryption key in fragment (#)")
 	}
 
-	id = parts[1]
-	key = parts[2]
+	// Extract the ID from the path (/s/{id})
+	pathParts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(pathParts) != 2 || pathParts[0] != "s" {
+		return "", "", "", fmt.Errorf("invalid whisper URL — expected path /s/<id>")
+	}
+	id = pathParts[1]
 
 	// Reconstruct server base URL
+	u.Path = ""
 	u.Fragment = ""
 	u.RawFragment = ""
 	serverURL = strings.TrimRight(u.String(), "/")

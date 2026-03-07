@@ -10,7 +10,15 @@ import (
 
 var version = "1.0.0"
 
+// DefaultAPIURL points to the globally deployed Vercel instance.
+var DefaultAPIURL = "https://whisper-core.vercel.app"
+
 func main() {
+	// Allow overriding the API URL for local testing
+	if envURL := os.Getenv("WHISPER_API_URL"); envURL != "" {
+		DefaultAPIURL = envURL
+	}
+
 	root := &cobra.Command{
 		Use:   "whisper",
 		Short: "Anonymous E2EE secret sharing",
