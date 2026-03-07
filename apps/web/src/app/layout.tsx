@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
+import { Toaster } from 'sonner';
 import { Providers } from '@/components/providers';
 import { ServerStatus } from '@/components/server-status';
 
@@ -35,7 +36,6 @@ export default function RootLayout({
                   whisper
                   <span className="animate-blink inline-block translate-y-1 ml-2 w-3 h-6 bg-[var(--foreground)] group-hover:bg-[#050505]"></span>
                 </h1>
-
               </Link>
               <div className="flex items-center cursor-default">
                 <p className="tracking-[0.25em] text-[var(--muted-fg)] uppercase text-[10px] sm:text-xs font-medium opacity-60 select-none">
@@ -55,6 +55,23 @@ export default function RootLayout({
               </p>
             </footer>
           </div>
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              unstyled: true,
+              classNames: {
+                toast:
+                  'flex items-center gap-3 w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-mono text-xs sm:text-sm tracking-widest uppercase p-4 sm:p-5 rounded-none shadow-2xl shadow-black/50 border-l-4 border-l-[var(--foreground)] md:w-[350px]',
+                title: 'font-bold flex-1',
+                description: 'text-[var(--muted-fg)] text-[10px]',
+                icon: 'mr-2',
+                success: '!border-l-green-500',
+                error: '!border-l-red-500 text-red-500',
+                warning: '!border-l-yellow-500',
+                info: '!border-l-blue-500',
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>

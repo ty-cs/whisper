@@ -60,7 +60,11 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
 
         // Validate expiry
         const expiresIn = body.expiresIn || '24h';
-        if (!EXPIRY_OPTIONS.includes(expiresIn as any)) {
+        if (
+            !EXPIRY_OPTIONS.includes(
+                expiresIn as (typeof EXPIRY_OPTIONS)[number],
+            )
+        ) {
             return c.json(
                 {
                     error: `Invalid expiresIn. Must be one of: ${EXPIRY_OPTIONS.join(', ')}`,

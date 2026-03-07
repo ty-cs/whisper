@@ -1,9 +1,11 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
-import { decrypt, deriveKeyFromPassword, base58ToUint8 } from '@whisper/crypto';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import type { SecretRecord } from '@whisper/core';
+import { base58ToUint8, decrypt, deriveKeyFromPassword } from '@whisper/crypto';
 import Link from 'next/link';
+import { use, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function ViewSecretPage({
   params,
@@ -41,7 +43,7 @@ export default function ViewSecretPage({
       payloadData,
       pass,
     }: {
-      payloadData: any;
+      payloadData: SecretRecord;
       pass: string;
     }) => {
       const hash = window.location.hash.replace('#', '');
@@ -68,8 +70,8 @@ export default function ViewSecretPage({
       setDecryptedText(plaintext);
       setDecryptionError('');
     },
-    onError: (err: any) => {
-      console.error('Decryption error:', err);
+    onError: (err: Error) => {
+      console.error('[onError] Decryption error:', err);
       if (
         err.name === 'OperationError' ||
         err.message.includes('password') ||
@@ -79,7 +81,7 @@ export default function ViewSecretPage({
           'Decryption failed. Incorrect password or invalid key.',
         );
       } else {
-        setDecryptionError(err.message || 'Decryption failed.');
+        setDecryptionError('Decryption failed.');
       }
     },
   });
@@ -134,7 +136,7 @@ export default function ViewSecretPage({
     );
   }
 
-  if (payload && payload.hasPassword && !decryptedText) {
+  if (payload?.hasPassword && !decryptedText) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-md mx-auto font-mono">
         <div className="w-full space-y-8 flex flex-col items-center text-center px-4">
@@ -157,14 +159,16 @@ export default function ViewSecretPage({
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="term-input text-center text-xl tracking-widest border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] py-3 px-4  appearance-none outline-none"
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (decryptionError) setDecryptionError('');
+              }}
+              className="term-input text-center text-xl tracking-widest border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] py-3 px-4 w-full appearance-none outline-none"
               placeholder="********"
-              autoFocus
               disabled={decryptMutation.isPending}
             />
 
-            {decryptionError && (
+            {!!decryptionError && (
               <div className="p-3 border border-red-500 text-red-500 text-sm font-medium animate-fade-in uppercase tracking-widest">
                 FATAL: {decryptionError}
               </div>
@@ -178,8 +182,8 @@ export default function ViewSecretPage({
                 <span className="animate-blink">DECRYPTING...</span>
               ) : (
                 <>
-                  <span className="text-[#050505] group-hover:text-[var(--foreground)]">
-                    &gt;&gt;
+                  <span className="group-hover:translate-x-1 transition-transform">
+                    -&gt;
                   </span>{' '}
                   UNLOCK_VAULT
                 </>
@@ -193,48 +197,71 @@ export default function ViewSecretPage({
 
   if (decryptedText) {
     return (
-      <div className="flex-1 flex flex-col animate-fade-in w-full max-w-4xl mx-auto font-mono">
-        <div className="w-full flex-1 flex flex-col relative space-y-6 px-2 sm:px-6">
-          <div className="absolute top-6 right-6 sm:top-6 sm:right-6 flex items-center gap-2">
-            {payload?.burnAfterReading ? (
-              <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
-                DESTROYED
-              </span>
-            ) : (
-              <span className="px-3 py-1 bg-[var(--foreground)] text-[#050505] border border-[var(--border)] text-[10px] font-bold tracking-widest uppercase">
-                DECRYPTED
-              </span>
-            )}
-          </div>
-
-          <div className="border-b border-[var(--muted)] pb-4 animate-fade-in-up delay-300">
-            <h2 className="text-sm font-bold tracking-widest uppercase text-[var(--foreground)] pr-32 flex items-center gap-2">
-              <span className="animate-blink">&gt;</span> CLASSIFIED INTEL
+      <div className="flex-1 flex flex-col animate-fade-in w-full font-mono">
+        <div className="w-full flex-1 flex flex-col relative space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--muted)] pb-4 animate-fade-in-up delay-300">
+            <h2 className="text-sm font-bold tracking-widest uppercase text-[var(--foreground)] flex items-center gap-2">
+              <span className="animate-blink">&gt;</span> DECRYPTED
             </h2>
+            <div className="flex items-center gap-2 pr-2 sm:pr-0">
+              {payload?.burnAfterReading ? (
+                <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
+                  DESTROYED
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <textarea
             readOnly
             value={decryptedText}
-            className="term-input border border-[var(--border)] p-6 flex-1 min-h-[350px] resize-none leading-relaxed bg-[var(--background)] text-[var(--foreground)] text-sm sm:text-base animate-fade-in-up delay-400"
+            className="w-full bg-transparent border border-[var(--border)] outline-none p-6 flex-1 min-h-[350px] resize-none leading-relaxed text-[var(--foreground)] text-sm sm:text-base animate-fade-in-up delay-400"
           />
 
-          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-8 pt-6 border-t border-[var(--muted)] animate-fade-in-up delay-500">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t border-[var(--muted)] animate-fade-in-up delay-500">
             <button
+              type="button"
               onClick={() => {
                 navigator.clipboard.writeText(decryptedText);
-                alert('Copied to clipboard!');
+                toast.success('COPIED_TO_CLIPBOARD');
               }}
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6">
-              [ COPY_CONTENTS ]
+              className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
+              <span className="group-hover/btn:translate-x-1 transition-transform">
+                -&gt;
+              </span>{' '}
+              COPY_CONTENTS
             </button>
 
             <Link
               href="/"
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-[#050505]">
-              [ DESTROY_AND_LEAVE ]
+              className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-[#050505] flex items-center justify-center gap-2 group/btn">
+              <span className="group-hover/btn:translate-x-1 transition-transform">
+                -&gt;
+              </span>{' '}
+              DESTROY_AND_LEAVE
             </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (decryptionError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-xl mx-auto font-mono">
+        <div className="w-full text-center space-y-6 flex flex-col items-center px-4">
+          <div className="w-16 h-16 flex items-center justify-center mb-2">
+            <span className="text-red-500 font-bold text-4xl">!</span>
+          </div>
+          <h2 className="text-xl font-bold tracking-widest uppercase text-red-500">
+            FATAL: DECRYPTION FAILED
+          </h2>
+          <p className="text-[var(--muted-fg)] text-sm max-w-sm uppercase">
+            {decryptionError}
+          </p>
+          <Link href="/" className="term-btn w-full mt-4">
+            &gt; RETURN_TO_BASE
+          </Link>
         </div>
       </div>
     );

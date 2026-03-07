@@ -17,7 +17,6 @@
   --animate-fade-in-up: fade-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 
   @keyframes processing {
-
     0%,
     100% {
       opacity: 0.8;
@@ -53,7 +52,6 @@ body {
 }
 
 @keyframes blink {
-
   0%,
   100% {
     opacity: 1;
@@ -108,11 +106,13 @@ body {
   }
 
   .term-btn-processing {
-    background: linear-gradient(-45deg,
-        var(--foreground),
-        var(--muted),
-        var(--foreground),
-        var(--muted));
+    background: linear-gradient(
+      -45deg,
+      var(--foreground),
+      var(--muted),
+      var(--foreground),
+      var(--muted)
+    );
     background-size: 400% 400%;
     animation: processing 1.5s ease infinite;
     @apply text-[#050505] cursor-wait border-[var(--foreground)] opacity-90;
