@@ -15,12 +15,12 @@
 - [ ] Implement UI design for secret sharing
 - [ ] Connect frontend to Hono API (or Vercel Edge)
 
-## Phase 1: Vercel + Upstash Redis 🟢 NEXT
+## Phase 1: Vercel + Upstash Redis ✅ DONE
 - [x] Upstash Redis storage adapter (written)
 - [x] Vercel Edge Function entry point (written)
-- [ ] Deploy to Vercel (use `.vercel.app` domain)
-- [ ] Wire Upstash Redis credentials
-- [ ] Verify E2EE flow on live URL
+- [x] Deploy to Vercel (use `.vercel.app` domain)
+- [x] Wire Upstash Redis credentials
+- [x] Verify E2EE flow on live URL
 
 ## Phase 2: Cloudflare Workers + KV
 - [ ] Cloudflare KV storage adapter
