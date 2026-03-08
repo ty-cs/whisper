@@ -37,7 +37,12 @@ export default function RootLayout({
                   <span className="animate-blink inline-block translate-y-1 ml-2 w-3 h-6 bg-[var(--foreground)] group-hover:bg-[#050505]"></span>
                 </h1>
               </Link>
-              <div className="flex items-center cursor-default">
+              <div className="flex items-center gap-4 sm:gap-6">
+                <Link
+                  href="/faq"
+                  className="term-btn text-[10px] sm:text-xs py-1 px-2 border-[var(--muted)] text-[var(--muted-fg)] hover:text-[#050505]">
+                  FAQ
+                </Link>
                 <p className="tracking-[0.25em] text-[var(--muted-fg)] uppercase text-[10px] sm:text-xs font-medium opacity-60 select-none">
                   ANONYMOUS &amp; SECURE
                 </p>
