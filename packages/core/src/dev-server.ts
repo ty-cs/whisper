@@ -6,8 +6,8 @@
  */
 
 import { serve } from '@hono/node-server';
-import { createApp } from './app.js';
-import { MemoryStorage } from './memory-storage.js';
+import { createApp } from './app';
+import { MemoryStorage } from './memory-storage';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 

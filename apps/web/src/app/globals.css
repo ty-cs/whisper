@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b;
+  --foreground: #e4e4e7;
+  --muted: #27272a;
+  --muted-fg: #71717a;
+  --border: #27272a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--foreground);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --animate-fade-in-up: fade-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+
+  @keyframes processing {
+    0%,
+    100% {
+      opacity: 0.8;
+      background-position: 0% 50%;
+    }
+
+    50% {
+      opacity: 1;
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes fade-in-up {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-mono), monospace;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-400 {
+  animation-delay: 400ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+@layer utilities {
+  .term-card {
+    @apply border border-[var(--border)] p-4 sm:p-8 bg-transparent relative rounded-none;
+  }
+
+  .term-card::after {
+    content: "";
+    @apply absolute top-0 left-0 w-full h-[2px] bg-[var(--foreground)] opacity-50;
+  }
+
+  /* term-btn is outline by default, filled on hover */
+  .term-btn {
+    @apply flex items-center justify-center gap-2 bg-transparent text-[var(--foreground)] border border-[var(--border)] font-bold px-4 py-2 hover:bg-[var(--foreground)] hover:text-[#050505] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest active:scale-[0.99] rounded-none disabled:opacity-30;
+  }
+
+  .term-btn-primary {
+    @apply flex items-center justify-center gap-2 bg-[var(--foreground)] text-[#050505] border border-[var(--border)] font-bold px-4 py-2 hover:bg-transparent hover:text-[var(--foreground)] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest rounded-none disabled:opacity-30;
+  }
+
+  .term-btn-processing {
+    background: linear-gradient(
+      -45deg,
+      var(--foreground),
+      var(--muted),
+      var(--foreground),
+      var(--muted)
+    );
+    background-size: 400% 400%;
+    animation: processing 1.5s ease infinite;
+    @apply text-[#050505] cursor-wait border-[var(--foreground)] opacity-90;
+  }
+
+  .term-btn-primary:not(:hover) {
+    text-shadow: none;
+  }
+
+  .term-input {
+    @apply bg-transparent text-[var(--foreground)] border border-transparent border-b-[var(--border)] px-2 py-2 w-full outline-none focus:outline-none focus:border-[var(--foreground)] focus:bg-[var(--muted)]/40 hover:bg-[var(--muted)]/20 transition-all duration-100 ease-in-out font-mono appearance-none;
+  }
+
+  .term-input::placeholder {
+    color: var(--muted-fg);
+    opacity: 0.5;
+  }
+}
+
+/* View Transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.4s;
+  animation-timing-function: var(--ease-brutal);
+}
+
+::view-transition-old(root) {
+  animation-name: slide-out;
+}
+
+::view-transition-new(root) {
+  animation-name: slide-in;
+}
+
+@keyframes slide-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translate(0, 0) rotate(0deg);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.9) translate(-50px, -50px) rotate(-2deg);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: scale(1.1) translate(50px, 50px) rotate(2deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translate(0, 0) rotate(0deg);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.4s var(--ease-brutal) forwards;
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

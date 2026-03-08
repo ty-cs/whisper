@@ -2,16 +2,20 @@
     "name": "whisper",
     "private": true,
     "workspaces": [
+        "apps/*",
         "packages/*",
         "platforms/*"
     ],
     "scripts": {
         "dev": "bun run --filter @whisper/core dev",
+        "dev:web": "bun run --filter web dev",
         "build": "tsc --build",
+        "build:web": "bun run --filter web build",
+        "format": "biome format --write .",
+        "format:web": "biome format --write apps/web",
         "test": "vitest run",
         "typecheck": "tsc --build",
-        "lint": "biome check .",
-        "format": "biome format --write ."
+        "lint": "biome check ."
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.6",

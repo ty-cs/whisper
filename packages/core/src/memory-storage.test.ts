@@ -27,7 +27,7 @@ describe('MemoryStorage.consume', () => {
 
         const result = await storage.consume('test-id');
         expect(result).not.toBeNull();
-        expect(result!.viewCount).toBe(1);
+        expect(result?.viewCount).toBe(1);
     });
 
     it('returns null for a non-existent id', async () => {
@@ -61,8 +61,10 @@ describe('MemoryStorage.consume', () => {
         const storage = new MemoryStorage();
         await storage.save(makeRecord({ maxViews: 2 }), 3600);
 
-        expect((await storage.consume('test-id'))!.viewCount).toBe(1);
-        expect((await storage.consume('test-id'))!.viewCount).toBe(2);
+        const v1 = await storage.consume('test-id');
+        expect(v1?.viewCount).toBe(1);
+        const v2 = await storage.consume('test-id');
+        expect(v2?.viewCount).toBe(2);
         expect(await storage.consume('test-id')).toBeNull();
         // Key is gone
         expect(await storage.get('test-id')).toBeNull();
