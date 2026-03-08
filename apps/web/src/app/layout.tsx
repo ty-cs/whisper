@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { Analytics } from '@vercel/analytics/next';
 import Link from 'next/link';
 import { Toaster } from 'sonner';
 import { Providers } from '@/components/providers';
@@ -74,7 +73,6 @@ export default function RootLayout({
             }}
           />
         </Providers>
-        <Analytics />
       </body>
     </html>
   );

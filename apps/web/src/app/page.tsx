@@ -220,6 +220,7 @@ export default function Home() {
             <input
               id="password"
               type="password"
+              autoComplete={'off'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="term-input border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] px-3 h-12 !rounded-none appearance-none outline-none"

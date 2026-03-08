@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
-    "@tanstack/react-query-devtools": "^5.91.3",
-    "@vercel/analytics": "^1.6.1",
     "@whisper/core": "workspace:*",
     "@whisper/crypto": "workspace:*",
     "next": "16.1.6",
@@ -22,13 +20,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@tanstack/react-query-devtools": "^5.91.3",
+    "@types/node": "^20.19.37",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "babel-plugin-react-compiler": "1.0.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3"
   },
   "ignoreScripts": [
     "sharp",
