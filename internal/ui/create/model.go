@@ -342,7 +342,13 @@ func (m Model) View() string {
 		}
 
 	case stateError:
-		s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render(fmt.Sprintf("Error: %v", m.err)))
+		s.WriteString(styles.GutterError.Render(" ✗") + "  " + styles.Muted.Render("Error:"))
+		s.WriteString("\n")
+		errWidth := m.width - 4 // account for indent margin
+		if errWidth < 20 {
+			errWidth = 20
+		}
+		s.WriteString(styles.Indent.Render(styles.Muted.Width(errWidth).Render(m.err.Error())))
 	}
 
 	return styles.Base.Render(s.String() + "\n\n")

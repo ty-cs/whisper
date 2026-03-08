@@ -74,7 +74,7 @@ func (c *Client) CreateSecret(req *CreateRequest) (*CreateResponse, error) {
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("could not reach the server — check your internet connection")
+		return nil, fmt.Errorf("could not reach the server at %s — check the address and your internet connection", c.BaseURL)
 	}
 	defer resp.Body.Close()
 
@@ -113,7 +113,7 @@ func (c *Client) DeleteSecret(id string) error {
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("could not reach the server — check your internet connection")
+		return fmt.Errorf("could not reach the server at %s — check the address and your internet connection", c.BaseURL)
 	}
 	defer resp.Body.Close()
 
@@ -133,7 +133,7 @@ func (c *Client) DeleteSecret(id string) error {
 func (c *Client) GetSecret(id string) (*GetResponse, error) {
 	resp, err := c.HTTPClient.Get(c.BaseURL + "/api/secrets/" + id)
 	if err != nil {
-		return nil, fmt.Errorf("could not reach the server — check your internet connection")
+		return nil, fmt.Errorf("could not reach the server at %s — check the address and your internet connection", c.BaseURL)
 	}
 	defer resp.Body.Close()
 
