@@ -28,7 +28,8 @@ jobs:
         run: bun run typecheck
 
       - name: Run Tests
-        run: bun test
+        # Use 'bun run test' (Vitest) to exclude Playwright E2E tests
+        run: bun run test
 
       - name: Setup Go
         uses: actions/setup-go@v5
