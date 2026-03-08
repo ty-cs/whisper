@@ -3,6 +3,7 @@ import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import { Toaster } from 'sonner';
+import { Analytics } from '@vercel/analytics/next';
 import { Providers } from '@/components/providers';
 import { ServerStatus } from '@/components/server-status';
 
@@ -73,6 +74,7 @@ export default function RootLayout({
             }}
           />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
