@@ -39,6 +39,7 @@ type CreateRequest struct {
 
 // CreateResponse is returned from POST /api/secrets.
 type CreateResponse struct {
+	Code             int    `json:"code"`
 	ID               string `json:"id"`
 	ExpiresAt        int64  `json:"expiresAt"`
 	BurnAfterReading bool   `json:"burnAfterReading"`
@@ -46,18 +47,20 @@ type CreateResponse struct {
 
 // GetResponse is returned from GET /api/secrets/:id.
 type GetResponse struct {
+	Code             int    `json:"code"`
 	Ciphertext       string `json:"ciphertext"`
 	IV               string `json:"iv"`
 	Salt             string `json:"salt"`
 	BurnAfterReading bool   `json:"burnAfterReading"`
 	HasPassword      bool   `json:"hasPassword"`
-	ExpiresAt        int64  `json:"expiresAt"`  // unix seconds
-	MaxViews         int    `json:"maxViews"`   // 0 = unlimited
-	ViewCount        int    `json:"viewCount"`  // views consumed so far (including this one)
+	ExpiresAt        int64  `json:"expiresAt"` // unix seconds
+	MaxViews         int    `json:"maxViews"`  // 0 = unlimited
+	ViewCount        int    `json:"viewCount"` // views consumed so far (including this one)
 }
 
 // ErrorResponse is returned on API errors.
 type ErrorResponse struct {
+	Code  int    `json:"code"`
 	Error string `json:"error"`
 }
 

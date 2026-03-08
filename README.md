@@ -110,6 +110,42 @@ By default the CLI talks to `http://localhost:3000`. Override with `--server <ur
 }
 ```
 
+### Response format
+
+Every response includes a `code` field (`0` = success, non-zero = error).
+
+**POST `/api/secrets`** (201):
+```json
+{ "code": 0, "id": "<nanoid>", "expiresAt": 1234567890, "burnAfterReading": false }
+```
+
+**GET `/api/secrets/:id`** (200):
+```json
+{ "code": 0, "ciphertext": "...", "iv": "...", "salt": "...", "burnAfterReading": false, "hasPassword": false, "expiresAt": 1234567890, "maxViews": 0, "viewCount": 1 }
+```
+
+**DELETE `/api/secrets/:id`** (200):
+```json
+{ "code": 0, "deleted": true }
+```
+
+**Error response**:
+```json
+{ "code": 1005, "error": "Secret not found or has expired" }
+```
+
+**Error codes**:
+
+| Code | Meaning |
+|------|---------|
+| 0 | OK (success) |
+| 1001 | Missing required fields |
+| 1002 | Invalid `expiresIn` value |
+| 1003 | Payload too large (> 1 MB) |
+| 1004 | `maxViews` exceeds maximum (10,000) |
+| 1005 | Secret not found or expired |
+| 5000 | Internal server error |
+
 ## Deployment
 
 ### Vercel (recommended)

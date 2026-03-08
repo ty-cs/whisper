@@ -17,16 +17,6 @@ export interface SecretRecord {
     createdAt: number;       // unix timestamp (seconds)
 }
 
-export interface CreateSecretInput {
-    ciphertext: string;
-    iv: string;
-    salt: string;
-    expiresIn: string; // "5m" | "1h" | "24h" | "7d" | "30d"
-    burnAfterReading?: boolean;
-    maxViews?: number;
-    hasPassword?: boolean;
-}
-
 /**
  * Parse a human-readable duration string to seconds.
  */

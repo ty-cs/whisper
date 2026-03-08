@@ -5,14 +5,22 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { validator } from 'hono/validator';
 import { nanoid } from 'nanoid';
+import type {
+    ApiErrorResponse,
+    CreateSecretRequest,
+    CreateSecretResponse,
+    DeleteSecretResponse,
+    GetSecretResponse,
+} from './api-types';
+import { ErrorCode } from './errors';
 import {
-    type CreateSecretInput,
     EXPIRY_OPTIONS,
     parseDuration,
     type SecretRecord,
     type StorageAdapter,
-} from './storage.js';
+} from './storage';
 
 export type AppEnv = {
     Variables: {
@@ -27,6 +35,18 @@ const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
  */
 export function createApp(storage: StorageAdapter): Hono<AppEnv> {
     const app = new Hono<AppEnv>();
+
+    // --- Global error handler ---
+    app.onError((err, c) => {
+        console.error(err);
+        return c.json(
+            {
+                code: ErrorCode.INTERNAL_SERVER_ERROR,
+                error: 'Internal server error',
+            },
+            500,
+        );
+    });
 
     // --- Middleware ---
     app.use('*', cors());
@@ -47,68 +67,104 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
     });
 
     // --- Create Secret ---
-    app.post('/api/secrets', async (c) => {
-        const body = await c.req.json<CreateSecretInput>();
+    app.post(
+        '/api/secrets',
+        validator('json', (value) => value as CreateSecretRequest),
+        async (c) => {
+            const body = c.req.valid('json');
 
-        // Validate required fields
-        if (!body.ciphertext || !body.iv || !body.salt) {
-            return c.json(
-                { error: 'Missing required fields: ciphertext, iv, salt' },
-                400,
-            );
-        }
+            // Validate required fields
+            if (!body.ciphertext || !body.iv || !body.salt) {
+                return c.json(
+                    {
+                        code: ErrorCode.MISSING_FIELDS,
+                        error: 'Missing required fields: ciphertext, iv, salt',
+                    } satisfies ApiErrorResponse,
+                    400,
+                );
+            }
 
-        // Validate expiry
-        const expiresIn = body.expiresIn || '24h';
-        if (
-            !EXPIRY_OPTIONS.includes(
-                expiresIn as (typeof EXPIRY_OPTIONS)[number],
-            )
-        ) {
+            // Validate expiry
+            const expiresIn = body.expiresIn || '24h';
+            if (
+                !EXPIRY_OPTIONS.includes(
+                    expiresIn as (typeof EXPIRY_OPTIONS)[number],
+                )
+            ) {
+                return c.json(
+                    {
+                        code: ErrorCode.INVALID_EXPIRY,
+                        error: `Invalid expiresIn. Must be one of: ${EXPIRY_OPTIONS.join(', ')}`,
+                    } satisfies ApiErrorResponse,
+                    400,
+                );
+            }
+
+            // Validate payload size (approximate — base64 encoded)
+            const payloadSize =
+                body.ciphertext.length + body.iv.length + body.salt.length;
+            if (payloadSize > MAX_BODY_SIZE) {
+                return c.json(
+                    {
+                        code: ErrorCode.PAYLOAD_TOO_LARGE,
+                        error: 'Payload too large. Maximum 1 MB.',
+                    } satisfies ApiErrorResponse,
+                    413,
+                );
+            }
+
+            const maxViews = body.maxViews ?? 0;
+            if (maxViews < 0 || maxViews > 10000) {
+                return c.json(
+                    {
+                        code: ErrorCode.MAX_VIEWS_EXCEEDED,
+                        error: 'Invalid maxViews. Must be between 0 and 10,000.',
+                    } satisfies ApiErrorResponse,
+                    400,
+                );
+            }
+
+            if ((body.burnAfterReading ?? false) && maxViews > 1) {
+                return c.json(
+                    {
+                        code: ErrorCode.CONFLICTING_OPTIONS,
+                        error: 'burnAfterReading and maxViews > 1 are mutually exclusive.',
+                    } satisfies ApiErrorResponse,
+                    400,
+                );
+            }
+
+            const ttlSeconds = parseDuration(expiresIn);
+            const now = Math.floor(Date.now() / 1000);
+            const id = nanoid(21);
+
+            const record: SecretRecord = {
+                id,
+                ciphertext: body.ciphertext,
+                iv: body.iv,
+                salt: body.salt,
+                expiresAt: now + ttlSeconds,
+                burnAfterReading: body.burnAfterReading ?? false,
+                maxViews,
+                viewCount: 0,
+                hasPassword: body.hasPassword ?? false,
+                createdAt: now,
+            };
+
+            const storage = c.get('storage');
+            await storage.save(record, ttlSeconds);
+
             return c.json(
                 {
-                    error: `Invalid expiresIn. Must be one of: ${EXPIRY_OPTIONS.join(', ')}`,
-                },
-                400,
+                    code: ErrorCode.OK,
+                    id,
+                    expiresAt: record.expiresAt,
+                    burnAfterReading: record.burnAfterReading,
+                } satisfies CreateSecretResponse,
+                201,
             );
-        }
-
-        // Validate payload size (approximate — base64 encoded)
-        const payloadSize =
-            body.ciphertext.length + body.iv.length + body.salt.length;
-        if (payloadSize > MAX_BODY_SIZE) {
-            return c.json({ error: 'Payload too large. Maximum 1 MB.' }, 413);
-        }
-
-        const ttlSeconds = parseDuration(expiresIn);
-        const now = Math.floor(Date.now() / 1000);
-        const id = nanoid(21);
-
-        const record: SecretRecord = {
-            id,
-            ciphertext: body.ciphertext,
-            iv: body.iv,
-            salt: body.salt,
-            expiresAt: now + ttlSeconds,
-            burnAfterReading: body.burnAfterReading ?? false,
-            maxViews: body.maxViews ?? 0,
-            viewCount: 0,
-            hasPassword: body.hasPassword ?? false,
-            createdAt: now,
-        };
-
-        const storage = c.get('storage');
-        await storage.save(record, ttlSeconds);
-
-        return c.json(
-            {
-                id,
-                expiresAt: record.expiresAt,
-                burnAfterReading: record.burnAfterReading,
-            },
-            201,
-        );
-    });
+        },
+    );
 
     // --- Get Secret ---
     app.get('/api/secrets/:id', async (c) => {
@@ -117,10 +173,17 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
 
         const record = await storage.consume(id);
         if (!record) {
-            return c.json({ error: 'Secret not found or has expired' }, 404);
+            return c.json(
+                {
+                    code: ErrorCode.NOT_FOUND,
+                    error: 'Secret not found or has expired',
+                } satisfies ApiErrorResponse,
+                404,
+            );
         }
 
         return c.json({
+            code: ErrorCode.OK,
             ciphertext: record.ciphertext,
             iv: record.iv,
             salt: record.salt,
@@ -129,7 +192,7 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
             expiresAt: record.expiresAt,
             maxViews: record.maxViews,
             viewCount: record.viewCount,
-        });
+        } satisfies GetSecretResponse);
     });
 
     // --- Delete Secret ---
@@ -139,13 +202,23 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
         const deleted = await storage.delete(id);
 
         if (!deleted) {
-            return c.json({ error: 'Secret not found' }, 404);
+            return c.json(
+                {
+                    code: ErrorCode.NOT_FOUND,
+                    error: 'Secret not found',
+                } satisfies ApiErrorResponse,
+                404,
+            );
         }
 
-        return c.json({ deleted: true });
+        return c.json({
+            code: ErrorCode.OK,
+            deleted: true,
+        } satisfies DeleteSecretResponse);
     });
 
     return app;
 }
 
-export type { StorageAdapter, SecretRecord, CreateSecretInput };
+export type AppType = ReturnType<typeof createApp>;
+export type { StorageAdapter, SecretRecord };

@@ -25,7 +25,7 @@ func TestGetSecretErrorMessages(t *testing.T) {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":"internal server error"}`))
+				w.Write([]byte(`{"code":5000,"error":"internal server error"}`))
 			},
 			wantErrContains: "server error",
 		},
@@ -96,7 +96,7 @@ func TestCreateSecretErrorMessages(t *testing.T) {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(`{"error":"expiresIn is required"}`))
+				w.Write([]byte(`{"code":1001,"error":"expiresIn is required"}`))
 			},
 			wantErrContains: "invalid request",
 		},

@@ -78,6 +78,10 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, noBurn bo
 		return fmt.Errorf("invalid --expires value %q; must be one of: 5m, 1h, 24h, 7d, 30d", expires)
 	}
 
+	if maxViews < 0 || maxViews > 10000 {
+		return fmt.Errorf("invalid --max-views value %d; must be between 0 and 10000", maxViews)
+	}
+
 	burnAfterReading := !noBurn
 	baseURL := resolveServer(server)
 
@@ -192,6 +196,9 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 
 	mv := maxViews
 	if burnAfterReading {
+		if maxViews > 1 {
+			fmt.Fprintf(os.Stderr, "warning: --max-views ignored because burn-after-reading is enabled\n")
+		}
 		mv = 1
 	}
 
