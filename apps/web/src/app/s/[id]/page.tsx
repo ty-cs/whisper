@@ -214,8 +214,8 @@ export default function ViewSecretPage({
             </h2>
             <div className="flex items-center gap-2 pr-2 sm:pr-0">
               {payload?.burnAfterReading ||
-              (payload?.maxViews > 0 &&
-                payload?.viewCount >= payload?.maxViews) ? (
+              ((payload?.maxViews ?? 0) > 0 &&
+                (payload?.viewCount ?? 0) >= (payload?.maxViews ?? 0)) ? (
                 <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
                   DESTROYED
                 </span>

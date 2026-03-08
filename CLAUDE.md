@@ -107,4 +107,4 @@ The `#fragment` is never sent to the server. The CLI parses this in `cmd/whisper
 
 ### CLI server resolution
 
-The CLI resolves the API server in order: `--server` flag → `$WHISPER_URL` env var → `http://localhost:3000`.
+The CLI resolves the API server in order: `--server` flag → `$WHISPER_API_URL` env var → `http://localhost:3000`.

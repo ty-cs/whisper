@@ -91,7 +91,18 @@ func (c *Client) CreateSecret(req *CreateRequest) (*CreateResponse, error) {
 		json.Unmarshal(respBody, &errResp)
 		switch resp.StatusCode {
 		case 400:
-			return nil, fmt.Errorf("invalid request: %s", errResp.Error)
+			switch errResp.Code {
+			case ErrorCodeInvalidExpiry:
+				return nil, fmt.Errorf("invalid expiry: %s", errResp.Error)
+			case ErrorCodeConflictingOptions:
+				return nil, fmt.Errorf("conflicting options: %s", errResp.Error)
+			case ErrorCodeMaxViewsExceeded:
+				return nil, fmt.Errorf("invalid max views: %s", errResp.Error)
+			default:
+				return nil, fmt.Errorf("invalid request: %s", errResp.Error)
+			}
+		case 413:
+			return nil, fmt.Errorf("payload too large — maximum 1 MB")
 		case 429:
 			return nil, fmt.Errorf("rate limited — please wait before creating another secret")
 		default:
@@ -105,6 +116,12 @@ func (c *Client) CreateSecret(req *CreateRequest) (*CreateResponse, error) {
 	}
 
 	return &result, nil
+}
+
+// DeleteResponse is returned from DELETE /api/secrets/:id.
+type DeleteResponse struct {
+	Code    int  `json:"code"`
+	Deleted bool `json:"deleted"`
 }
 
 // DeleteSecret deletes a secret by ID from the server.
