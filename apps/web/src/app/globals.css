@@ -6,6 +6,8 @@
   --muted: #27272a;
   --muted-fg: #71717a;
   --border: #27272a;
+  --font-jetbrains-mono: monospace; /* fallback; next/font overrides this at runtime */
+  --ease-brutal: cubic-bezier(0.86, 0, 0.07, 1);
 }
 
 @theme inline {
@@ -20,7 +22,7 @@
     0%,
     100% {
       opacity: 0.8;
-      background-position: 0% 50%;
+      background-position: 0 50%;
     }
 
     50% {
@@ -93,21 +95,21 @@ body {
 
 @layer utilities {
   .term-card {
-    @apply border border-[var(--border)] p-4 sm:p-8 bg-transparent relative rounded-none;
+    @apply border border-(--border) p-4 sm:p-8 bg-transparent relative rounded-none;
   }
 
   .term-card::after {
     content: "";
-    @apply absolute top-0 left-0 w-full h-[2px] bg-[var(--foreground)] opacity-50;
+    @apply absolute top-0 left-0 w-full h-0.5 bg-(--foreground) opacity-50;
   }
 
   /* term-btn is outline by default, filled on hover */
   .term-btn {
-    @apply flex items-center justify-center gap-2 bg-transparent text-[var(--foreground)] border border-[var(--border)] font-bold px-4 py-2 hover:bg-[var(--foreground)] hover:text-[#050505] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest active:scale-[0.99] rounded-none disabled:opacity-30;
+    @apply flex items-center justify-center gap-2 bg-transparent text-(--foreground) border border-(--border) font-bold px-4 py-2 hover:bg-(--foreground) hover:text-[#050505] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest active:scale-[0.99] rounded-none disabled:opacity-30;
   }
 
   .term-btn-primary {
-    @apply flex items-center justify-center gap-2 bg-[var(--foreground)] text-[#050505] border border-[var(--border)] font-bold px-4 py-2 hover:bg-transparent hover:text-[var(--foreground)] transition-all duration-100 ease-in-out uppercase font-mono tracking-widest rounded-none disabled:opacity-30;
+    @apply flex items-center justify-center gap-2 bg-(--foreground) text-[#050505] border border-(--border) font-bold px-4 py-2 hover:bg-transparent hover:text-(--foreground) transition-all duration-100 ease-in-out uppercase font-mono tracking-widest rounded-none disabled:opacity-30;
   }
 
   .term-btn-processing {
@@ -120,7 +122,7 @@ body {
     );
     background-size: 400% 400%;
     animation: processing 1.5s ease infinite;
-    @apply text-[#050505] cursor-wait border-[var(--foreground)] opacity-90;
+    @apply text-[#050505] cursor-wait border-(--foreground) opacity-90;
   }
 
   .term-btn-primary:not(:hover) {
@@ -128,7 +130,7 @@ body {
   }
 
   .term-input {
-    @apply bg-transparent text-[var(--foreground)] border border-transparent border-b-[var(--border)] px-2 py-2 w-full outline-none focus:outline-none focus:border-[var(--foreground)] focus:bg-[var(--muted)]/40 hover:bg-[var(--muted)]/20 transition-all duration-100 ease-in-out font-mono appearance-none;
+    @apply bg-transparent text-(--foreground) border border-transparent border-b-(--border) px-2 py-2 w-full outline-none focus:border-(--foreground) focus:bg-(--muted)/40 hover:bg-(--muted)/20 transition-all duration-100 ease-in-out font-mono appearance-none;
   }
 
   .term-input::placeholder {
