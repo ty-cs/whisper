@@ -9,6 +9,7 @@ import {
 } from '@whisper/crypto';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { createSecret } from '@/lib/api';
 
 export default function Home() {
   const [text, setText] = useState('');
@@ -30,7 +31,7 @@ export default function Home() {
 
       const payload = await encrypt(text, encryptionKey);
 
-      const reqBody = {
+      const data = await createSecret({
         ciphertext: payload.ciphertext,
         iv: payload.iv,
         salt: payload.salt,
@@ -38,20 +39,8 @@ export default function Home() {
         burnAfterReading,
         maxViews,
         hasPassword: !!password,
-      };
-
-      const res = await fetch('/api/secrets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reqBody),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${res.status}`);
-      }
-
-      const data = await res.json();
       return { id: data.id, urlKey };
     },
     onSuccess: (data) => {
@@ -180,11 +169,15 @@ export default function Home() {
               id="maxViews"
               type="number"
               min="0"
+              max="10000"
               value={maxViews}
-              onChange={(e) => setMaxViews(parseInt(e.target.value, 10) || 0)}
-              className="term-input border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] px-3 h-12 !rounded-none appearance-none outline-none"
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10) || 0;
+                setMaxViews(Math.min(val, 10000));
+              }}
+              className="term-input border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] px-3 h-12 !rounded-none appearance-none outline-none disabled:opacity-40 disabled:cursor-not-allowed"
               placeholder="0 (UNLIMITED)"
-              disabled={createSecretMutation.isPending}
+              disabled={createSecretMutation.isPending || burnAfterReading}
             />
           </div>
 
@@ -192,7 +185,11 @@ export default function Home() {
           <button
             type="button"
             className="w-full text-left col-span-1 md:col-span-2 flex items-center justify-between p-4 border border-[var(--muted)] hover:border-[var(--foreground)] cursor-pointer transition-colors bg-[var(--background)] group rounded-none"
-            onClick={() => setBurnAfterReading(!burnAfterReading)}>
+            onClick={() => {
+              const next = !burnAfterReading;
+              setBurnAfterReading(next);
+              setMaxViews(next ? 1 : 0);
+            }}>
             <div>
               <span className="block text-sm font-bold tracking-widest uppercase cursor-pointer text-[var(--foreground)] group-hover:text-[#050505] group-hover:bg-[var(--foreground)] inline-block select-none">
                 BURN_AFTER_READING

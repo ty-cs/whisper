@@ -1,11 +1,13 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { SecretRecord } from '@whisper/core';
+import type { GetSecretResponse } from '@whisper/core';
 import { base58ToUint8, decrypt, deriveKeyFromPassword } from '@whisper/crypto';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { deleteSecret, getSecret } from '@/lib/api';
 
 export default function ViewSecretPage({
   params,
@@ -14,6 +16,7 @@ export default function ViewSecretPage({
 }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+  const router = useRouter();
 
   const [decryptedText, setDecryptedText] = useState('');
   const [password, setPassword] = useState('');
@@ -26,24 +29,30 @@ export default function ViewSecretPage({
     error: fetchError,
   } = useQuery({
     queryKey: ['secret', id],
-    queryFn: async () => {
-      const res = await fetch(`/api/secrets/${id}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to fetch secret');
-      }
-      return res.json();
-    },
+    queryFn: () => getSecret(id),
     retry: false, // Don't retry 404s for destroyed secrets
   });
 
-  // 2. Decrypt Mutation
+  // 2. Delete Mutation
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSecret(id),
+    onSuccess: () => {
+      toast.success('SECRET_DESTROYED');
+      router.push('/');
+    },
+    onError: () => {
+      toast.error('FAILED_TO_DESTROY');
+      router.push('/');
+    },
+  });
+
+  // 3. Decrypt Mutation
   const decryptMutation = useMutation({
     mutationFn: async ({
       payloadData,
       pass,
     }: {
-      payloadData: SecretRecord;
+      payloadData: GetSecretResponse;
       pass: string;
     }) => {
       const hash = window.location.hash.replace('#', '');
@@ -204,7 +213,9 @@ export default function ViewSecretPage({
               <span className="animate-blink">&gt;</span> DECRYPTED
             </h2>
             <div className="flex items-center gap-2 pr-2 sm:pr-0">
-              {payload?.burnAfterReading ? (
+              {payload?.burnAfterReading ||
+              (payload?.maxViews > 0 &&
+                payload?.viewCount >= payload?.maxViews) ? (
                 <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
                   DESTROYED
                 </span>
@@ -232,14 +243,16 @@ export default function ViewSecretPage({
               COPY_CONTENTS
             </button>
 
-            <Link
-              href="/"
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-[#050505] flex items-center justify-center gap-2 group/btn">
+            <button
+              type="button"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-[#050505] flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed">
               <span className="group-hover/btn:translate-x-1 transition-transform">
                 -&gt;
               </span>{' '}
-              DESTROY_AND_LEAVE
-            </Link>
+              {deleteMutation.isPending ? 'DESTROYING...' : 'DESTROY_AND_LEAVE'}
+            </button>
           </div>
         </div>
       </div>
