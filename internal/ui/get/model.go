@@ -37,8 +37,8 @@ type (
 type state int
 
 const (
-	stateFetching state = iota
-	stateConfirmBurn // warn before consuming a burn-after-reading secret
+	stateFetching    state = iota
+	stateConfirmBurn       // warn before consuming a burn-after-reading secret
 	statePasswordInput
 	stateDone
 	stateError
@@ -324,7 +324,7 @@ func formatMeta(r *api.GetResponse) string {
 		parts = append(parts, "Password protected")
 	}
 
-	return strings.Join(parts, "   ·   ")
+	return strings.Join(parts, " · ")
 }
 
 // relativeTime formats a Unix timestamp as a human-readable relative duration.
@@ -350,6 +350,7 @@ func relativeTime(unix int64) string {
 		return fmt.Sprintf("in %dd", days)
 	}
 }
+
 // decryptWithPassword derives the key from the password+salt and decrypts.
 func (m Model) decryptWithPassword(password string) tea.Cmd {
 	resp := m.fetchedResp
