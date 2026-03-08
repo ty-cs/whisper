@@ -124,7 +124,7 @@ func TestCreateSecretErrorMessages(t *testing.T) {
 			_, err := NewClient(srv.URL).CreateSecret(&CreateRequest{
 				Ciphertext: "abc",
 				IV:         "def",
-				Salt:       "ghi",
+	
 				ExpiresIn:  "24h",
 			})
 			assertErrContains(t, err, tt.wantErrContains)
@@ -139,7 +139,6 @@ func TestCreateSecretNetworkError(t *testing.T) {
 	_, err := NewClient(srv.URL).CreateSecret(&CreateRequest{
 		Ciphertext: "abc",
 		IV:         "def",
-		Salt:       "ghi",
 		ExpiresIn:  "24h",
 	})
 	assertErrContains(t, err, "could not reach the server")

@@ -8,7 +8,7 @@ function makeRecord(overrides: Partial<SecretRecord> = {}): SecretRecord {
         id: 'test-id',
         ciphertext: 'ct',
         iv: 'iv',
-        salt: 'salt',
+
         expiresAt: now + 3600,
         burnAfterReading: false,
         maxViews: 0,

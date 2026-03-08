@@ -30,7 +30,7 @@ describe('@whisper/core app', () => {
             body: JSON.stringify({
                 ciphertext: 'test-ciphertext',
                 iv: 'test-iv',
-                salt: 'test-salt',
+
                 expiresIn: '1h',
             }),
             headers: {
@@ -72,7 +72,7 @@ describe('@whisper/core app', () => {
             body: JSON.stringify({
                 ciphertext: 'burn-me',
                 iv: 'iv',
-                salt: 'salt',
+
                 expiresIn: '1h',
                 burnAfterReading: true,
             }),
@@ -100,7 +100,7 @@ describe('@whisper/core app', () => {
             body: JSON.stringify({
                 ciphertext: 'limited',
                 iv: 'iv',
-                salt: 'salt',
+
                 expiresIn: '1h',
                 maxViews: 2,
             }),
@@ -130,7 +130,7 @@ describe('@whisper/core app', () => {
             body: JSON.stringify({
                 ciphertext: 'c',
                 iv: 'iv',
-                salt: 'salt',
+
                 expiresIn: '1h',
                 maxViews: -1,
             }),
@@ -151,7 +151,7 @@ describe('@whisper/core app', () => {
             body: JSON.stringify({
                 ciphertext: 'c',
                 iv: 'iv',
-                salt: 'salt',
+
                 expiresIn: '1h',
                 burnAfterReading: true,
                 maxViews: 2,
@@ -173,7 +173,7 @@ describe('@whisper/core app', () => {
             body: JSON.stringify({
                 ciphertext: 'delete-me',
                 iv: 'iv',
-                salt: 'salt',
+
                 expiresIn: '1h',
             }),
             headers: { 'Content-Type': 'application/json' },

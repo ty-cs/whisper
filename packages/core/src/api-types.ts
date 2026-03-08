@@ -7,7 +7,6 @@ export interface ApiResponse {
 export interface CreateSecretRequest {
     ciphertext: string;
     iv: string;
-    salt: string;
     expiresIn: string;
     burnAfterReading?: boolean;
     maxViews?: number;
@@ -22,7 +21,6 @@ export interface CreateSecretResponse extends ApiResponse {
 export interface GetSecretResponse extends ApiResponse {
     ciphertext: string;
     iv: string;
-    salt: string;
     burnAfterReading: boolean;
     hasPassword: boolean;
     expiresAt: number;

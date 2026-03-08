@@ -89,7 +89,7 @@ The Go crypto (`internal/crypto`) is intentionally interoperable with `@whisper/
 
 Shareable URLs follow the pattern:
 ```
-https://host/#/s/<SECRET_ID>/<BASE58_KEY>
+https://host/s/<SECRET_ID>#<BASE58_KEY>
 ```
 
 The `#fragment` is never sent to the server. The CLI parses this in `cmd/whisper/get.go:parseWhisperURL`.
@@ -103,7 +103,7 @@ The `#fragment` is never sent to the server. The CLI parses this in `cmd/whisper
 | GET | `/api/secrets/:id` | Retrieve (and optionally burn) secret |
 | DELETE | `/api/secrets/:id` | Delete secret |
 
-`POST /api/secrets` accepts `{ ciphertext, iv, salt, expiresIn, burnAfterReading?, maxViews?, hasPassword? }`. Valid `expiresIn` values: `5m`, `1h`, `24h`, `7d`, `30d`.
+`POST /api/secrets` accepts `{ ciphertext, iv, expiresIn, burnAfterReading?, maxViews?, hasPassword? }`. Valid `expiresIn` values: `5m`, `1h`, `24h`, `7d`, `30d`.
 
 ### CLI server resolution
 

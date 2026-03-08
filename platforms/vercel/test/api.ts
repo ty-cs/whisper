@@ -12,7 +12,6 @@ const BASE = process.argv.includes('--url')
 const FIXTURE = {
     ciphertext: 'my-encrypted-secret-message',
     iv: 'initialization-vector',
-    salt: 'password-salt',
     expiresIn: '1h',
 } as const;
 
@@ -111,18 +110,16 @@ await suite('Create secret', async () => {
 });
 
 await suite('Retrieve secret', async () => {
-    await test('GET /api/secrets/:id returns ciphertext, iv, salt', async () => {
+    await test('GET /api/secrets/:id returns ciphertext and iv', async () => {
         const id = await createSecret();
         const res = await fetch(url(`/api/secrets/${id}`));
         assert(res.status === 200, `expected 200, got ${res.status}`);
         const body = (await res.json()) as {
             ciphertext: string;
             iv: string;
-            salt: string;
         };
         assert(body.ciphertext === FIXTURE.ciphertext, 'ciphertext mismatch');
         assert(body.iv === FIXTURE.iv, 'iv mismatch');
-        assert(body.salt === FIXTURE.salt, 'salt mismatch');
     });
 
     await test('GET /api/secrets/:id returns 404 for unknown id', async () => {

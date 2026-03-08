@@ -20,7 +20,6 @@ const base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwx
 type EncryptedPayload struct {
 	Ciphertext string `json:"ciphertext"`
 	IV         string `json:"iv"`
-	Salt       string `json:"salt"`
 }
 
 // GenerateKey creates a cryptographically random 256-bit key.
@@ -33,7 +32,7 @@ func GenerateKey() ([]byte, error) {
 }
 
 // Encrypt encrypts plaintext using AES-256-GCM.
-// Returns the ciphertext, IV, and salt as base64-encoded strings.
+// Returns the ciphertext and IV as base64-encoded strings.
 func Encrypt(plaintext string, key []byte) (*EncryptedPayload, error) {
 	if len(key) != 32 {
 		return nil, errors.New("key must be 32 bytes (256 bits)")
@@ -55,18 +54,11 @@ func Encrypt(plaintext string, key []byte) (*EncryptedPayload, error) {
 		return nil, err
 	}
 
-	// 16-byte salt (for future password-based key derivation)
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return nil, err
-	}
-
 	ciphertext := gcm.Seal(nil, iv, []byte(plaintext), nil)
 
 	return &EncryptedPayload{
 		Ciphertext: base64.StdEncoding.EncodeToString(ciphertext),
 		IV:         base64.StdEncoding.EncodeToString(iv),
-		Salt:       base64.StdEncoding.EncodeToString(salt),
 	}, nil
 }
 
@@ -77,35 +69,10 @@ func DeriveKeyFromPassword(password string, salt []byte) ([]byte, error) {
 	return key, nil
 }
 
-// EncryptWithKey encrypts plaintext using AES-256-GCM with a provided key and salt.
-// Use this when the salt must be preserved externally (e.g. for password-derived keys).
-func EncryptWithKey(plaintext string, key []byte, salt []byte) (*EncryptedPayload, error) {
-	if len(key) != 32 {
-		return nil, errors.New("key must be 32 bytes (256 bits)")
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	iv := make([]byte, 12)
-	if _, err := rand.Read(iv); err != nil {
-		return nil, err
-	}
-
-	ciphertext := gcm.Seal(nil, iv, []byte(plaintext), nil)
-
-	return &EncryptedPayload{
-		Ciphertext: base64.StdEncoding.EncodeToString(ciphertext),
-		IV:         base64.StdEncoding.EncodeToString(iv),
-		Salt:       base64.StdEncoding.EncodeToString(salt),
-	}, nil
+// EncryptWithKey encrypts plaintext using AES-256-GCM with a provided key.
+// Equivalent to Encrypt but accepts the key as a parameter rather than generating one.
+func EncryptWithKey(plaintext string, key []byte) (*EncryptedPayload, error) {
+	return Encrypt(plaintext, key)
 }
 
 // Decrypt decrypts an AES-256-GCM encrypted payload.

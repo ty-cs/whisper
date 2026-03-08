@@ -46,10 +46,10 @@ const faqs = [
       │
       ▼
   share URL:
-  https://host/#/s/<id>/<key>
-                 │        │
-                 │        └── fragment: NEVER sent to server
-                 └────────── path: server only sees the ID`}
+  https://host/s/<id>#<key>
+                  │      │
+                  │      └── fragment: NEVER sent to server
+                  └───────── path: server only sees the ID`}
         </pre>
         <p className="mt-4 mb-3">When the recipient opens the URL:</p>
         <pre className="text-[10px] sm:text-xs leading-relaxed text-[var(--muted-fg)] overflow-x-auto">
@@ -111,10 +111,6 @@ const faqs = [
             initialization vector (public, needed for decryption)
           </li>
           <li>
-            <span className="text-[var(--foreground)]">salt</span> — only
-            present if password-protected; used for key derivation
-          </li>
-          <li>
             <span className="text-[var(--foreground)]">expiresAt</span> —
             expiration timestamp
           </li>
@@ -141,13 +137,13 @@ const faqs = [
       <>
         <p className="mb-4">The shareable URL has a precise structure:</p>
         <pre className="text-[10px] sm:text-xs leading-relaxed text-[var(--muted-fg)] overflow-x-auto">
-          {`  https://whisper.example.com/#/s/AbCdEfGh/3mK9xQvZpL...
-  ───────────────────────────  ─ ─ ──────── ────────────
-        domain                 │    secret      base58
-     (reaches server)       fragment   ID      AES key
-                            anchor   (server  (browser
-                          (browser   stores    only)
-                            only)   ciphertext)`}
+          {`  https://whisper.example.com/s/AbCdEfGh#3mK9xQvZpL...
+  ─────────────────────────── ─────────── ────────────
+        domain                   path        fragment
+     (reaches server)          secret ID    base58
+                                (server     AES key
+                                 stores    (browser
+                              ciphertext)    only)`}
         </pre>
         <p className="mt-4 text-[var(--muted-fg)]">
           The <span className="text-[var(--foreground)]">#fragment</span> (hash)
@@ -188,20 +184,21 @@ const faqs = [
     content: (
       <>
         <p>
-          Optionally add a password when creating a secret. The password is used
-          to derive an additional encryption key via PBKDF2 (SHA-256, 100,000
-          iterations, random 16-byte salt). This derived key wraps the primary
-          AES key before storage.
+          Optionally add a password when creating a secret. The random URL key
+          (in the fragment) is used as the PBKDF2 salt; the password is the
+          PBKDF2 input. Together they derive the AES-256-GCM encryption key
+          (SHA-256, 600,000 iterations). The plaintext is encrypted directly
+          with this derived key — there is no separate key-wrapping step.
         </p>
         <p className="mt-3 text-[var(--muted-fg)]">
-          The server stores the salt but not the password or derived key. The
-          recipient must enter the correct password in their browser to decrypt.
-          Share the password through a separate channel (e.g., a phone call) for
-          maximum security.
+          The server never sees the password or derived key. The recipient must
+          enter the correct password in their browser; it is combined with the
+          URL key to rederive the encryption key. Share the password through a
+          separate channel (e.g., a phone call) for maximum security.
         </p>
         <p className="mt-3 text-[var(--muted-fg)]">
-          Without the password, the ciphertext in the URL fragment alone is
-          insufficient to decrypt the secret.
+          Without the password, the URL key alone is insufficient to decrypt the
+          secret.
         </p>
       </>
     ),
@@ -226,12 +223,12 @@ const faqs = [
             ['IV size', '12 bytes (96 bits, GCM standard)'],
             [
               'Password KDF',
-              'PBKDF2-SHA-256, 100,000 iterations, 16-byte random salt',
+              'PBKDF2-SHA-256, 600,000 iterations; URL key (32 bytes) used as salt',
             ],
             ['Storage backend', 'Upstash Redis via HTTP (server-side)'],
             [
               'CLI interop',
-              'Go CLI uses identical AES-256-GCM + Base58 (cross-compatible)',
+              'Go CLI uses identical AES-256-GCM + Base58 (cross-compatible for non-password secrets)',
             ],
             [
               'Runtime',
@@ -251,8 +248,8 @@ const faqs = [
           <code className="text-[var(--foreground)]">@whisper/crypto</code>) and
           Go implementation (
           <code className="text-[var(--foreground)]">internal/crypto</code>) are
-          cross-compatible: secrets created with the CLI can be decrypted in the
-          browser and vice versa.
+          cross-compatible. Both use the same AES-256-GCM algorithm, key format,
+          and password KDF (PBKDF2-SHA-256, URL key as salt).
         </p>
       </>
     ),

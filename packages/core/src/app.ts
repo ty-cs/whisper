@@ -74,11 +74,11 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
             const body = c.req.valid('json');
 
             // Validate required fields
-            if (!body.ciphertext || !body.iv || !body.salt) {
+            if (!body.ciphertext || !body.iv) {
                 return c.json(
                     {
                         code: ErrorCode.MISSING_FIELDS,
-                        error: 'Missing required fields: ciphertext, iv, salt',
+                        error: 'Missing required fields: ciphertext, iv',
                     } satisfies ApiErrorResponse,
                     400,
                 );
@@ -101,8 +101,7 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
             }
 
             // Validate payload size (approximate — base64 encoded)
-            const payloadSize =
-                body.ciphertext.length + body.iv.length + body.salt.length;
+            const payloadSize = body.ciphertext.length + body.iv.length;
             if (payloadSize > MAX_BODY_SIZE) {
                 return c.json(
                     {
@@ -142,7 +141,6 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
                 id,
                 ciphertext: body.ciphertext,
                 iv: body.iv,
-                salt: body.salt,
                 expiresAt: now + ttlSeconds,
                 burnAfterReading: body.burnAfterReading ?? false,
                 maxViews,
@@ -186,7 +184,6 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
             code: ErrorCode.OK,
             ciphertext: record.ciphertext,
             iv: record.iv,
-            salt: record.salt,
             burnAfterReading: record.burnAfterReading,
             hasPassword: record.hasPassword,
             expiresAt: record.expiresAt,

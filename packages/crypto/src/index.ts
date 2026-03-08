@@ -12,7 +12,6 @@ const BASE58_ALPHABET =
 export interface EncryptedPayload {
     ciphertext: string; // base64
     iv: string; // base64
-    salt: string; // base64
 }
 
 /**
@@ -27,14 +26,13 @@ export function generateKey(): Uint8Array {
  *
  * @param plaintext - The text to encrypt
  * @param key - 256-bit key (32 bytes)
- * @returns Encrypted payload with ciphertext, IV, and salt (all base64)
+ * @returns Encrypted payload with ciphertext and IV (all base64)
  */
 export async function encrypt(
     plaintext: string,
     key: Uint8Array,
 ): Promise<EncryptedPayload> {
     const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
-    const salt = crypto.getRandomValues(new Uint8Array(16)); // For future password-based key derivation
 
     const cryptoKey = await crypto.subtle.importKey(
         'raw',
@@ -54,7 +52,6 @@ export async function encrypt(
     return {
         ciphertext: uint8ToBase64(new Uint8Array(ciphertext)),
         iv: uint8ToBase64(iv),
-        salt: uint8ToBase64(salt),
     };
 }
 

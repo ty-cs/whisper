@@ -8,7 +8,6 @@ export interface SecretRecord {
     id: string;
     ciphertext: string;      // base64 AES-256-GCM ciphertext
     iv: string;              // base64 initialization vector
-    salt: string;            // base64 salt (for password derivation)
     expiresAt: number;       // unix timestamp (seconds)
     burnAfterReading: boolean;
     maxViews: number;        // 0 = unlimited

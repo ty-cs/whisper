@@ -17,7 +17,7 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 		t.Fatalf("Encrypt failed: %v", err)
 	}
 
-	if payload.Ciphertext == "" || payload.IV == "" || payload.Salt == "" {
+	if payload.Ciphertext == "" || payload.IV == "" {
 		t.Fatal("Encrypted payload has empty fields")
 	}
 

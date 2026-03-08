@@ -30,7 +30,6 @@ func NewClient(baseURL string) *Client {
 type CreateRequest struct {
 	Ciphertext       string `json:"ciphertext"`
 	IV               string `json:"iv"`
-	Salt             string `json:"salt"`
 	ExpiresIn        string `json:"expiresIn"`
 	BurnAfterReading bool   `json:"burnAfterReading,omitempty"`
 	MaxViews         int    `json:"maxViews,omitempty"`
@@ -50,7 +49,6 @@ type GetResponse struct {
 	Code             int    `json:"code"`
 	Ciphertext       string `json:"ciphertext"`
 	IV               string `json:"iv"`
-	Salt             string `json:"salt"`
 	BurnAfterReading bool   `json:"burnAfterReading"`
 	HasPassword      bool   `json:"hasPassword"`
 	ExpiresAt        int64  `json:"expiresAt"` // unix seconds

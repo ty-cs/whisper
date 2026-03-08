@@ -1,7 +1,6 @@
 package get
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"os"
@@ -296,7 +295,6 @@ func (m Model) decryptDirect(resp *api.GetResponse) tea.Cmd {
 		payload := &crypto.EncryptedPayload{
 			Ciphertext: resp.Ciphertext,
 			IV:         resp.IV,
-			Salt:       resp.Salt,
 		}
 
 		plaintext, err := crypto.Decrypt(payload, keyBytes)
@@ -351,16 +349,21 @@ func relativeTime(unix int64) string {
 	}
 }
 
-// decryptWithPassword derives the key from the password+salt and decrypts.
+// decryptWithPassword derives the key from the password using the URL key as PBKDF2 salt and decrypts.
 func (m Model) decryptWithPassword(password string) tea.Cmd {
 	resp := m.fetchedResp
+	base58Key := m.base58Key
 	return func() tea.Msg {
-		saltBytes, err := base64.StdEncoding.DecodeString(resp.Salt)
-		if err != nil {
-			return errMsg{fmt.Errorf("invalid salt in payload")}
+		if base58Key == "" {
+			return errMsg{fmt.Errorf("password-protected secret is missing URL key — may be from an older CLI version")}
 		}
 
-		keyBytes, err := crypto.DeriveKeyFromPassword(password, saltBytes)
+		urlKeyBytes, err := crypto.Base58ToKey(base58Key)
+		if err != nil {
+			return errMsg{fmt.Errorf("invalid key in URL fragment")}
+		}
+
+		keyBytes, err := crypto.DeriveKeyFromPassword(password, urlKeyBytes)
 		if err != nil {
 			return errMsg{fmt.Errorf("key derivation failed: %w", err)}
 		}
@@ -368,7 +371,6 @@ func (m Model) decryptWithPassword(password string) tea.Cmd {
 		payload := &crypto.EncryptedPayload{
 			Ciphertext: resp.Ciphertext,
 			IV:         resp.IV,
-			Salt:       resp.Salt,
 		}
 
 		plaintext, err := crypto.Decrypt(payload, keyBytes)

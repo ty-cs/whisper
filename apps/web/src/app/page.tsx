@@ -34,7 +34,6 @@ export default function Home() {
       const data = await createSecret({
         ciphertext: payload.ciphertext,
         iv: payload.iv,
-        salt: payload.salt,
         expiresIn,
         burnAfterReading,
         maxViews,

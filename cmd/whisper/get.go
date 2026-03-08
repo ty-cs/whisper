@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -80,18 +79,20 @@ func headlessGet(client *api.Client, id, base58Key, password string, jsonOutput 
 		if password == "" {
 			return fmt.Errorf("this secret is password-protected — run again with --password <password>")
 		}
-		saltBytes, err := base64.StdEncoding.DecodeString(resp.Salt)
-		if err != nil {
-			return fmt.Errorf("invalid salt in payload")
+		if base58Key == "" {
+			return fmt.Errorf("this secret is password-protected but the URL is missing the decryption key fragment — it may have been created with an older version of the CLI")
 		}
-		keyBytes, err := crypto.DeriveKeyFromPassword(password, saltBytes)
+		urlKeyBytes, err := crypto.Base58ToKey(base58Key)
+		if err != nil {
+			return fmt.Errorf("invalid key in URL fragment: %w", err)
+		}
+		keyBytes, err := crypto.DeriveKeyFromPassword(password, urlKeyBytes)
 		if err != nil {
 			return fmt.Errorf("key derivation failed: %w", err)
 		}
 		payload := &crypto.EncryptedPayload{
 			Ciphertext: resp.Ciphertext,
 			IV:         resp.IV,
-			Salt:       resp.Salt,
 		}
 		plaintext, err = crypto.Decrypt(payload, keyBytes)
 		if err != nil {
@@ -105,7 +106,6 @@ func headlessGet(client *api.Client, id, base58Key, password string, jsonOutput 
 		payload := &crypto.EncryptedPayload{
 			Ciphertext: resp.Ciphertext,
 			IV:         resp.IV,
-			Salt:       resp.Salt,
 		}
 		plaintext, err = crypto.Decrypt(payload, keyBytes)
 		if err != nil {

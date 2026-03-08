@@ -23,8 +23,8 @@ generateKey() → key                 (no plaintext ever)
 encrypt(secret, key) → ciphertext
 POST /api/secrets { ciphertext } ──▶ store(id, ciphertext)
                                  ◀── { id }
-shareURL = https://host/#/s/<id>/<key>
-                                     ↑ fragment never sent
+shareURL = https://host/s/<id>#<key>
+                                    ↑ fragment never sent
 ```
 
 When a recipient opens the URL, the browser extracts the key from the fragment locally, fetches the ciphertext, and decrypts it — all without the server learning the key.
@@ -96,10 +96,10 @@ whisper create --file secret.txt
 echo "my secret" | whisper create
 
 # Retrieve a secret
-whisper get "https://host/#/s/<id>/<key>"
+whisper get "https://host/s/<id>#<key>"
 
 # Delete a secret
-whisper delete "https://host/#/s/<id>/<key>"
+whisper delete "https://host/s/<id>#<key>"
 ```
 
 ### `create` flags
@@ -147,7 +147,6 @@ The CLI resolves the API server in this order:
 {
   "ciphertext": "<base64>",
   "iv": "<base64>",
-  "salt": "<base64>",
   "expiresIn": "5m | 1h | 24h | 7d | 30d",
   "burnAfterReading": false,
   "maxViews": 0,
@@ -166,7 +165,7 @@ Every response includes a `code` field (`0` = success, non-zero = error).
 
 **GET `/api/secrets/:id`** (200):
 ```json
-{ "code": 0, "ciphertext": "...", "iv": "...", "salt": "...", "burnAfterReading": false, "hasPassword": false, "expiresAt": 1234567890, "maxViews": 0, "viewCount": 1 }
+{ "code": 0, "ciphertext": "...", "iv": "...", "burnAfterReading": false, "hasPassword": false, "expiresAt": 1234567890, "maxViews": 0, "viewCount": 1 }
 ```
 
 **DELETE `/api/secrets/:id`** (200):
@@ -262,10 +261,10 @@ CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`).
 ## Security
 
 - Encryption: AES-256-GCM, 256-bit key, 12-byte random IV
-- Password KDF: PBKDF2-SHA256, 600,000 iterations, 16-byte random salt
+- Password KDF: PBKDF2-SHA256, 600,000 iterations; the 32-byte URL fragment key (`urlKey`) serves as the salt — never transmitted to the server
 - Key encoding: Base58 (Bitcoin alphabet, no ambiguous characters)
 - Max payload: 1 MB
-- The server stores only ciphertext, IV, and salt — never the key
+- The server stores only ciphertext and IV — never the key or password salt
 
 If you find a security vulnerability, please disclose it responsibly by opening a private security advisory on GitHub rather than a public issue.
 

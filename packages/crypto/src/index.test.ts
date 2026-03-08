@@ -17,7 +17,6 @@ describe('@whisper/crypto', () => {
 
         expect(payload.ciphertext).toBeDefined();
         expect(payload.iv).toBeDefined();
-        expect(payload.salt).toBeDefined();
 
         const decrypted = await decrypt(payload, key);
         expect(decrypted).toBe(plaintext);

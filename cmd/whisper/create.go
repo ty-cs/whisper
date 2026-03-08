@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -167,31 +166,28 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 	var hasPassword bool
 	var base58Key string
 
+	urlKey, err := crypto.GenerateKey()
+	if err != nil {
+		return fmt.Errorf("generating key: %w", err)
+	}
+	base58Key = crypto.KeyToBase58(urlKey)
+
 	if password != "" {
-		salt := make([]byte, 16)
-		if _, err := rand.Read(salt); err != nil {
-			return fmt.Errorf("generating salt: %w", err)
-		}
-		keyBytes, err := crypto.DeriveKeyFromPassword(password, salt)
+		keyBytes, err := crypto.DeriveKeyFromPassword(password, urlKey)
 		if err != nil {
 			return fmt.Errorf("deriving key: %w", err)
 		}
-		payload, err = crypto.EncryptWithKey(text, keyBytes, salt)
+		payload, err = crypto.Encrypt(text, keyBytes)
 		if err != nil {
 			return fmt.Errorf("encrypting: %w", err)
 		}
 		hasPassword = true
 	} else {
-		keyBytes, err := crypto.GenerateKey()
-		if err != nil {
-			return fmt.Errorf("generating key: %w", err)
-		}
 		var encErr error
-		payload, encErr = crypto.Encrypt(text, keyBytes)
+		payload, encErr = crypto.Encrypt(text, urlKey)
 		if encErr != nil {
 			return fmt.Errorf("encrypting: %w", encErr)
 		}
-		base58Key = crypto.KeyToBase58(keyBytes)
 	}
 
 	mv := maxViews
@@ -205,7 +201,6 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 	req := &api.CreateRequest{
 		Ciphertext:       payload.Ciphertext,
 		IV:               payload.IV,
-		Salt:             payload.Salt,
 		ExpiresIn:        expiresIn,
 		BurnAfterReading: burnAfterReading,
 		MaxViews:         mv,
@@ -217,12 +212,7 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 		return err
 	}
 
-	var finalURL string
-	if hasPassword {
-		finalURL = fmt.Sprintf("%s/s/%s", client.BaseURL, resp.ID)
-	} else {
-		finalURL = fmt.Sprintf("%s/s/%s#%s", client.BaseURL, resp.ID, base58Key)
-	}
+	finalURL := fmt.Sprintf("%s/s/%s#%s", client.BaseURL, resp.ID, base58Key)
 
 	if jsonOutput {
 		data, _ := json.Marshal(map[string]interface{}{

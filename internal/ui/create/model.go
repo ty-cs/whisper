@@ -1,7 +1,6 @@
 package create
 
 import (
-	"crypto/rand"
 	"fmt"
 	"strings"
 
@@ -385,60 +384,32 @@ func (m Model) encryptAndUpload() tea.Msg {
 	var payload *crypto.EncryptedPayload
 	var hasPassword bool
 
-	if m.password != "" {
-		// Password flow: derive key from password + random salt
-		salt := make([]byte, 16)
-		if _, err := rand.Read(salt); err != nil {
-			return errMsg{fmt.Errorf("generating salt: %w", err)}
-		}
+	urlKey, err := crypto.GenerateKey()
+	if err != nil {
+		return errMsg{fmt.Errorf("generating key: %w", err)}
+	}
+	base58Key := crypto.KeyToBase58(urlKey)
 
-		keyBytes, err := crypto.DeriveKeyFromPassword(m.password, salt)
+	if m.password != "" {
+		// Password flow: derive key from password using urlKey as PBKDF2 salt
+		keyBytes, err := crypto.DeriveKeyFromPassword(m.password, urlKey)
 		if err != nil {
 			return errMsg{fmt.Errorf("deriving key: %w", err)}
-		}
-
-		payload, err = crypto.EncryptWithKey(plaintext, keyBytes, salt)
-		if err != nil {
-			return errMsg{fmt.Errorf("encrypting: %w", err)}
-		}
-		hasPassword = true
-	} else {
-		// Standard flow: random key
-		keyBytes, err := crypto.GenerateKey()
-		if err != nil {
-			return errMsg{fmt.Errorf("generating key: %w", err)}
 		}
 
 		payload, err = crypto.Encrypt(plaintext, keyBytes)
 		if err != nil {
 			return errMsg{fmt.Errorf("encrypting: %w", err)}
 		}
-
-		base58Key := crypto.KeyToBase58(keyBytes)
-		maxViews := maxViewsOptions[m.maxViewsIndex]
-		if m.burnAfterReading {
-			maxViews = 1
-		}
-
-		req := &api.CreateRequest{
-			Ciphertext:       payload.Ciphertext,
-			IV:               payload.IV,
-			Salt:             payload.Salt,
-			ExpiresIn:        expiryOptions[m.expiryIndex],
-			BurnAfterReading: m.burnAfterReading,
-			MaxViews:         maxViews,
-		}
-
-		resp, err := m.apiClient.CreateSecret(req)
+		hasPassword = true
+	} else {
+		// Standard flow: urlKey is the encryption key directly
+		payload, err = crypto.Encrypt(plaintext, urlKey)
 		if err != nil {
-			return errMsg{fmt.Errorf("uploading to server: %w", err)}
+			return errMsg{fmt.Errorf("encrypting: %w", err)}
 		}
-
-		finalURL := fmt.Sprintf("%s/s/%s#%s", m.apiClient.BaseURL, resp.ID, base58Key)
-		return successMsg{url: finalURL}
 	}
 
-	// Password path continues here
 	maxViews := maxViewsOptions[m.maxViewsIndex]
 	if m.burnAfterReading {
 		maxViews = 1
@@ -447,7 +418,6 @@ func (m Model) encryptAndUpload() tea.Msg {
 	req := &api.CreateRequest{
 		Ciphertext:       payload.Ciphertext,
 		IV:               payload.IV,
-		Salt:             payload.Salt,
 		ExpiresIn:        expiryOptions[m.expiryIndex],
 		BurnAfterReading: m.burnAfterReading,
 		MaxViews:         maxViews,
@@ -459,7 +429,6 @@ func (m Model) encryptAndUpload() tea.Msg {
 		return errMsg{fmt.Errorf("uploading to server: %w", err)}
 	}
 
-	// No key in fragment for password-protected secrets
-	finalURL := fmt.Sprintf("%s/s/%s", m.apiClient.BaseURL, resp.ID)
+	finalURL := fmt.Sprintf("%s/s/%s#%s", m.apiClient.BaseURL, resp.ID, base58Key)
 	return successMsg{url: finalURL}
 }

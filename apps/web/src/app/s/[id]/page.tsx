@@ -70,7 +70,6 @@ export default function ViewSecretPage({
         {
           ciphertext: payloadData.ciphertext,
           iv: payloadData.iv,
-          salt: payloadData.salt,
         },
         finalKey,
       );

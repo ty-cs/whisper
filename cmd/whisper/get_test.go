@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +36,7 @@ func TestParseWhisperURL(t *testing.T) {
 			wantServer: "http://localhost:3000",
 		},
 		{
-			name:       "missing fragment (password-protected secret)",
+			name:       "URL without fragment",
 			rawURL:     "https://example.com/s/abc123",
 			wantID:     "abc123",
 			wantKey:    "",
@@ -116,11 +115,11 @@ func TestHeadlessGetErrors(t *testing.T) {
 	})
 
 	t.Run("wrong password", func(t *testing.T) {
-		// Encrypt a real secret so decryption can fail meaningfully
-		salt := make([]byte, 16)
-		rand.Read(salt)
-		key, _ := crypto.DeriveKeyFromPassword("correct", salt)
-		payload, _ := crypto.EncryptWithKey("hello", key, salt)
+		// Encrypt a real secret using ZK model (urlKey as PBKDF2 salt)
+		urlKey, _ := crypto.GenerateKey()
+		key, _ := crypto.DeriveKeyFromPassword("correct", urlKey)
+		payload, _ := crypto.Encrypt("hello", key)
+		base58Key := crypto.KeyToBase58(urlKey)
 
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -128,13 +127,23 @@ func TestHeadlessGetErrors(t *testing.T) {
 				HasPassword: true,
 				Ciphertext:  payload.Ciphertext,
 				IV:          payload.IV,
-				Salt:        payload.Salt,
 			})
 		}))
 		defer srv.Close()
 
-		err := headlessGet(api.NewClient(srv.URL), "id", "", "wrong", false)
+		err := headlessGet(api.NewClient(srv.URL), "id", base58Key, "wrong", false)
 		assertErrContains(t, err, "wrong password")
+	})
+
+	t.Run("password-protected with no fragment", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(api.GetResponse{HasPassword: true})
+		}))
+		defer srv.Close()
+
+		err := headlessGet(api.NewClient(srv.URL), "id", "", "somepass", false)
+		assertErrContains(t, err, "missing the decryption key fragment")
 	})
 
 	t.Run("corrupted key in URL", func(t *testing.T) {
@@ -146,7 +155,6 @@ func TestHeadlessGetErrors(t *testing.T) {
 			json.NewEncoder(w).Encode(api.GetResponse{
 				Ciphertext: payload.Ciphertext,
 				IV:         payload.IV,
-				Salt:       payload.Salt,
 			})
 		}))
 		defer srv.Close()
