@@ -47,7 +47,7 @@ This repo is a Bun monorepo alongside a Go module.
 ### Prerequisites
 
 - [Bun](https://bun.sh) ≥ 1.0
-- [Go](https://go.dev) ≥ 1.21 (for the CLI only)
+- [Go](https://go.dev) ≥ 1.25 (for the CLI only)
 
 ### Run locally
 
@@ -55,37 +55,82 @@ This repo is a Bun monorepo alongside a Go module.
 # Install dependencies
 bun install
 
-# Start the API server (in-memory storage, port 3000)
+# Start the API server (in-memory storage, port 4000)
 bun run dev
 
 # In a separate terminal, start the web UI (port 3001)
-cd apps/web && bun run dev
+bun run dev:web
 ```
 
 Open [http://localhost:3001](http://localhost:3001).
 
-### CLI
+> **Note:** The CLI defaults to `http://localhost:3000`. When running against the local dev server, pass `--server http://localhost:4000` or set `WHISPER_API_URL=http://localhost:4000`.
+
+## CLI
+
+### Installation
+
+**Using `go install`** (requires Go ≥ 1.25):
 
 ```bash
-# Build
-go build ./cmd/whisper
-
-# Create a secret interactively
-./whisper create
-
-# Create from text or file
-./whisper create --text "my secret"
-./whisper create --file secret.txt
-echo "my secret" | ./whisper create
-
-# Retrieve a secret
-./whisper get "https://host/#/s/<id>/<key>"
-
-# Delete a secret
-./whisper delete "https://host/#/s/<id>/<key>"
+go install github.com/ty-cs/whisper/cmd/whisper@latest
 ```
 
-By default the CLI talks to `http://localhost:3000`. Override with `--server <url>` or `$WHISPER_URL`.
+**Build from source:**
+
+```bash
+git clone https://github.com/ty-cs/whisper.git
+cd whisper
+go build ./cmd/whisper
+```
+
+### Usage
+
+```bash
+# Create a secret interactively (TUI)
+whisper create
+
+# Create from text or file
+whisper create --text "my secret"
+whisper create --file secret.txt
+echo "my secret" | whisper create
+
+# Retrieve a secret
+whisper get "https://host/#/s/<id>/<key>"
+
+# Delete a secret
+whisper delete "https://host/#/s/<id>/<key>"
+```
+
+### `create` flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `-t, --text` | — | Secret text (skips interactive prompt) |
+| `-f, --file` | — | Read secret from a file |
+| `-e, --expires` | `24h` | Expiry: `5m`, `1h`, `24h`, `7d`, `30d` |
+| `--no-burn` | — | Disable burn-after-reading |
+| `-m, --max-views` | `0` | Max view count (0 = unlimited; requires `--no-burn`) |
+| `--password` | — | Password-protect the secret |
+| `-q, --quiet` | — | Output only the URL |
+| `-j, --json` | — | Output JSON |
+| `-s, --server` | — | API server URL (overrides env and default) |
+
+### `get` flags
+
+| Flag | Description |
+|---|---|
+| `-p, --password` | Password for protected secrets |
+| `-q, --quiet` | Output only the plaintext |
+| `-j, --json` | Output JSON |
+
+### Server resolution
+
+The CLI resolves the API server in this order:
+
+1. `--server <url>` flag
+2. `$WHISPER_API_URL` environment variable
+3. `http://localhost:3000` (default)
 
 ## API
 
@@ -105,7 +150,7 @@ By default the CLI talks to `http://localhost:3000`. Override with `--server <ur
   "salt": "<base64>",
   "expiresIn": "5m | 1h | 24h | 7d | 30d",
   "burnAfterReading": false,
-  "maxViews": null,
+  "maxViews": 0,
   "hasPassword": false
 }
 ```
@@ -131,7 +176,7 @@ Every response includes a `code` field (`0` = success, non-zero = error).
 
 **Error response**:
 ```json
-{ "code": 1005, "error": "Secret not found or has expired" }
+{ "code": 1006, "error": "Secret not found or has expired" }
 ```
 
 **Error codes**:
@@ -143,7 +188,8 @@ Every response includes a `code` field (`0` = success, non-zero = error).
 | 1002 | Invalid `expiresIn` value |
 | 1003 | Payload too large (> 1 MB) |
 | 1004 | `maxViews` exceeds maximum (10,000) |
-| 1005 | Secret not found or expired |
+| 1005 | Conflicting options |
+| 1006 | Secret not found or expired |
 | 5000 | Internal server error |
 
 ## Deployment
@@ -153,7 +199,7 @@ Every response includes a `code` field (`0` = success, non-zero = error).
 The `platforms/vercel` package deploys as a Vercel Edge Function backed by [Upstash Redis](https://upstash.com).
 
 ```bash
-# From the repo root for local dev
+# Local dev — run from repo root (not platforms/vercel/)
 vercel dev
 
 # Deploy
@@ -188,20 +234,27 @@ const app = createApp({
 # Type-check all packages
 bun run typecheck
 
-# Build (TypeScript project references)
+# Build all packages
 bun run build
 
-# Run all tests
-bun test
-
-# Run tests for a specific package
-bun test packages/crypto
+# Run all tests (Vitest)
+bun run test
 
 # Lint and format
 bun run lint
+```
 
-# Go tests
+### Go
+
+```bash
+# Build the CLI binary
+go build ./cmd/whisper
+
+# Run all Go tests
 go test ./...
+
+# Run only internal package tests
+go test -v ./internal/...
 ```
 
 CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`).
