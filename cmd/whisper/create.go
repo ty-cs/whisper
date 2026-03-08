@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/whisper/whisper/internal/api"
-	"github.com/whisper/whisper/internal/crypto"
-	createUI "github.com/whisper/whisper/internal/ui/create"
+	"github.com/ty-cs/whisper/internal/api"
+	"github.com/ty-cs/whisper/internal/crypto"
+	createUI "github.com/ty-cs/whisper/internal/ui/create"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"

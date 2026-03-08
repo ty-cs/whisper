@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/whisper/whisper/internal/api"
-	"github.com/whisper/whisper/internal/crypto"
+	"github.com/ty-cs/whisper/internal/api"
+	"github.com/ty-cs/whisper/internal/crypto"
 )
 
 func TestParseWhisperURL(t *testing.T) {

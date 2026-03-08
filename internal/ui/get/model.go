@@ -14,9 +14,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/whisper/whisper/internal/api"
-	"github.com/whisper/whisper/internal/crypto"
-	"github.com/whisper/whisper/internal/ui/styles"
+	"github.com/ty-cs/whisper/internal/api"
+	"github.com/ty-cs/whisper/internal/crypto"
+	"github.com/ty-cs/whisper/internal/ui/styles"
 )
 
 // Msg types

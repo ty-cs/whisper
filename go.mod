@@ -1,4 +1,4 @@
-module github.com/whisper/whisper
+module github.com/ty-cs/whisper
 
 go 1.25.0
 

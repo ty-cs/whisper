@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/whisper/whisper/internal/api"
+	"github.com/ty-cs/whisper/internal/api"
 )
 
 func deleteCmd() *cobra.Command {

@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/whisper/whisper/internal/api"
-	"github.com/whisper/whisper/internal/crypto"
-	getUI "github.com/whisper/whisper/internal/ui/get"
+	"github.com/ty-cs/whisper/internal/api"
+	"github.com/ty-cs/whisper/internal/crypto"
+	getUI "github.com/ty-cs/whisper/internal/ui/get"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -130,7 +130,7 @@ func parseWhisperURL(rawURL string) (id, key, serverURL string, err error) {
 		return "", "", "", fmt.Errorf("%q is not a valid URL", rawURL)
 	}
 
-	// Extract the key from the fragment (#) — empty for password-protected secrets
+	// Extract the key from the fragment (#)
 	key = u.Fragment
 
 	// Extract the ID from the path (/s/{id})
