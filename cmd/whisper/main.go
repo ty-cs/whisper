@@ -29,8 +29,9 @@ var DefaultAPIURL = "http://localhost:3000"
 
 func main() {
 	root := &cobra.Command{
-		Use:   "whisper",
-		Short: "Anonymous E2EE secret sharing",
+		Use:     "whisper",
+		Version: "v" + resolveVersion(),
+		Short:   "Anonymous E2EE secret sharing",
 		Long: `whisper — share secrets anonymously with end-to-end encryption.
 
 Secrets are encrypted locally before upload. The server never sees
