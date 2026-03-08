@@ -194,7 +194,7 @@ export default function Home() {
             className="w-full text-left col-span-1 md:col-span-2 flex items-center justify-between p-4 border border-[var(--muted)] hover:border-[var(--foreground)] cursor-pointer transition-colors bg-[var(--background)] group rounded-none"
             onClick={() => setBurnAfterReading(!burnAfterReading)}>
             <div>
-              <span className="block text-sm font-bold tracking-widest uppercase cursor-pointer text-[var(--foreground)] group-hover:text-[#050505] group-hover:bg-[var(--foreground)] inline-block px-1 select-none">
+              <span className="block text-sm font-bold tracking-widest uppercase cursor-pointer text-[var(--foreground)] group-hover:text-[#050505] group-hover:bg-[var(--foreground)] inline-block select-none">
                 BURN_AFTER_READING
               </span>
               <p className="text-xs text-[var(--muted-fg)] mt-1 uppercase tracking-wide">

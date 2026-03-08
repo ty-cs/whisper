@@ -51,6 +51,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+::selection {
+  background-color: var(--foreground);
+  color: #050505;
+}
+
 @keyframes blink {
   0%,
   100% {
