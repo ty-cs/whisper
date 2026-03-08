@@ -202,7 +202,7 @@ export default function Home() {
               </p>
             </div>
             <div
-              className={`text-xl font-bold tracking-widest ${burnAfterReading ? 'text-[var(--foreground)]' : 'text-[var(--muted)] group-hover:text-[var(--foreground)]'}`}>
+              className={`whitespace-nowrap shrink-0 text-xl font-bold tracking-widest ${burnAfterReading ? 'text-[var(--foreground)]' : 'text-[var(--muted)] group-hover:text-[var(--foreground)]'}`}>
               [{burnAfterReading ? 'X' : ' '}]
             </div>
           </button>
