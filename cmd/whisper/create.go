@@ -252,7 +252,7 @@ func resolveServer(flag string) string {
 	if env := os.Getenv("WHISPER_API_URL"); env != "" {
 		return strings.TrimRight(env, "/")
 	}
-	return DefaultAPIURL // Set in main.go
+	return DefaultAPIURL
 }
 
 func isTerminalStdin() bool {

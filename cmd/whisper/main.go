@@ -24,15 +24,10 @@ func resolveVersion() string {
 	return "dev"
 }
 
-// DefaultAPIURL points to the globally deployed Vercel instance.
-var DefaultAPIURL = "https://whisper-core.vercel.app"
+// DefaultAPIURL is the fallback server when no --server flag or WHISPER_API_URL env var is set.
+var DefaultAPIURL = "http://localhost:3000"
 
 func main() {
-	// Allow overriding the API URL for local testing
-	if envURL := os.Getenv("WHISPER_API_URL"); envURL != "" {
-		DefaultAPIURL = envURL
-	}
-
 	root := &cobra.Command{
 		Use:   "whisper",
 		Short: "Anonymous E2EE secret sharing",

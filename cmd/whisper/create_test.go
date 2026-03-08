@@ -55,21 +55,21 @@ func TestResolveServer(t *testing.T) {
 	DefaultAPIURL = "https://default.example.com"
 
 	tests := []struct {
-		name    string
-		flag    string
-		envVar  string
-		want    string
+		name   string
+		flag   string
+		envVar string
+		want   string
 	}{
 		{
-			name: "flag takes priority over env and default",
-			flag: "https://flag.example.com",
+			name:   "flag takes priority over env and default",
+			flag:   "https://flag.example.com",
 			envVar: "https://env.example.com",
-			want: "https://flag.example.com",
+			want:   "https://flag.example.com",
 		},
 		{
-			name:   "flag with trailing slash is trimmed",
-			flag:   "https://flag.example.com/",
-			want:   "https://flag.example.com",
+			name: "flag with trailing slash is trimmed",
+			flag: "https://flag.example.com/",
+			want: "https://flag.example.com",
 		},
 		{
 			name:   "env var used when no flag",
