@@ -36,3 +36,7 @@ export async function deleteSecret(id: string): Promise<DeleteSecretResponse> {
     .json<DeleteSecretResponse>()
     .catch(extractError);
 }
+
+export async function checkHealth(): Promise<void> {
+  await api.get('health').catch(extractError);
+}

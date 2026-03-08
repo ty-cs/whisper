@@ -1,16 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { checkHealth } from '@/lib/api';
 
 export function ServerStatus() {
   const { data, isPending, isError } = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
       const start = performance.now();
-      const res = await fetch('/api/health');
-      if (!res.ok) {
-        throw new Error('Health check failed');
-      }
+      await checkHealth();
       const end = performance.now();
       return {
         latency: Math.round(end - start),
