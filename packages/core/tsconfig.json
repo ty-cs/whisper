@@ -1,15 +1,8 @@
 {
     "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "composite": true,
-        "outDir": "./dist",
-        "rootDir": "./src",
+        "noEmit": true,
         "types": ["node"]
     },
-    "include": ["src/**/*.ts"],
-    "references": [
-        {
-            "path": "../crypto"
-        }
-    ]
+    "include": ["src/**/*.ts"]
 }

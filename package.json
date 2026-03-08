@@ -9,12 +9,12 @@
     "scripts": {
         "dev": "bun run --filter @whisper/core dev",
         "dev:web": "bun run --filter web dev",
-        "build": "tsc --build",
+        "build": "bun run --filter @whisper/crypto build && bun run --filter @whisper/core build",
         "build:web": "bun run --filter web build",
         "format": "biome format --write .",
         "format:web": "biome format --write apps/web",
         "test": "vitest run",
-        "typecheck": "tsc --build",
+        "typecheck": "bun run --filter @whisper/crypto typecheck && bun run --filter @whisper/core typecheck",
         "lint": "biome check .",
         "prepare": "lefthook install"
     },
@@ -23,6 +23,7 @@
         "@playwright/test": "^1.58.2",
         "@types/node": "^25.3.5",
         "lefthook": "^2.1.3",
+        "tsdown": "^0.21.0",
         "typescript": "^5.9.3",
         "vitest": "^4.0.18"
     }

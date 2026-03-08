@@ -4,7 +4,7 @@
  */
 
 import { Redis } from '@upstash/redis';
-import type { SecretRecord, StorageAdapter } from '@whisper/core/storage';
+import type { SecretRecord, StorageAdapter } from '@whisper/core';
 
 // Atomically consume a secret in a single Redis round-trip.
 //

@@ -3,13 +3,14 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/index.mjs",
+    "types": "./dist/index.d.mts",
     "exports": {
-        ".": "./dist/index.js",
-        "./storage": "./dist/storage.js"
+        ".": "./dist/index.mjs"
     },
     "scripts": {
+        "build": "tsdown",
+        "typecheck": "tsc --noEmit",
         "dev": "bun run src/dev-server.ts"
     },
     "dependencies": {
