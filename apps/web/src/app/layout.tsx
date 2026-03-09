@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
 import { Toaster } from 'sonner';
+import { AnimatedTitle } from '@/components/animated-title';
 import { Providers } from '@/components/providers';
 import { ServerStatus } from '@/components/server-status';
 
@@ -24,10 +25,7 @@ export default function RootLayout({
               <Link
                 href="/"
                 className="hover:bg-(--foreground) hover:text-[#050505] transition-colors px-3 py-2 sm:-ml-3 select-none group">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-widest uppercase">
-                  whisper
-                  <span className="animate-blink inline-block translate-y-1 ml-2 w-3 h-6 bg-[var(--foreground)] group-hover:bg-[#050505]"></span>
-                </h1>
+                <AnimatedTitle />
               </Link>
               <div className="flex items-center gap-4 sm:gap-6">
                 <Link

@@ -21,6 +21,7 @@
         "@tanstack/react-query": "^5.90.21",
         "@whisper/core": "workspace:*",
         "@whisper/crypto": "workspace:*",
+        "animejs": "^4.3.6",
         "ky": "^1.7.5",
         "next": "16.1.6",
         "react": "19.2.3",
@@ -400,6 +401,8 @@
     "@whisper/crypto": ["@whisper/crypto@workspace:packages/crypto"],
 
     "@whisper/vercel": ["@whisper/vercel@workspace:platforms/vercel"],
+
+    "animejs": ["animejs@4.3.6", "", {}, "sha512-rzZ4bDc8JAtyx6hYwxj7s5M/yWfnM5qqY4hZDnhy1cWFvMb6H5/necHS2sbCY3WQTDbRLuZL10dPXSxSCFOr/w=="],
 
     "ansis": ["ansis@4.2.0", "", {}, "sha512-HqZ5rWlFjGiV0tDm3UxxgNRqsOTniqoKZu0pIAfh7TZQMGuZK+hH0drySty0si0QXj1ieop4+SkSfPZBPPkHig=="],
 
