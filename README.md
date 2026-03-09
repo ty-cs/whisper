@@ -221,9 +221,10 @@ Implement the `StorageAdapter` interface from `@whisper/core` and pass it to `cr
 import { createApp } from "@whisper/core";
 
 const app = createApp({
-  save(id, data, ttlSeconds) { /* ... */ },
+  save(record, ttlSeconds) { /* ... */ },
   get(id) { /* ... */ },
   delete(id) { /* ... */ },
+  consume(id) { /* atomic: check limits, increment viewCount, burn if needed */ },
 });
 ```
 
@@ -239,8 +240,15 @@ bun run build
 # Run all tests (Vitest)
 bun run test
 
-# Lint and format
+# Run E2E tests (Playwright)
+bun run e2e
+bun run e2e:ui   # interactive UI mode
+
+# Lint
 bun run lint
+
+# Format
+bun run format
 ```
 
 ### Go

@@ -19,14 +19,14 @@ Encryption always happens client-side. The server only ever stores ciphertext. T
 # Install dependencies
 bun install
 
-# Run dev server (in-memory storage, port 3000)
+# Run dev server (in-memory storage, port 4000)
 bun run dev
 
-# Build all packages (TypeScript project references)
-bun run build         # same as: tsc --build
+# Build all packages (bundles @whisper/crypto and @whisper/core via tsdown)
+bun run build
 
-# Type-check without emitting
-bun run typecheck     # same as: tsc --build
+# Type-check without emitting (tsc --noEmit per package)
+bun run typecheck
 
 # Run all tests
 bun test
@@ -52,7 +52,7 @@ go run ./cmd/whisper get <url>
 
 ## TypeScript Build Notes
 
-This monorepo uses TypeScript **project references**. Always use `tsc --build` (not `tsc --noEmit`) when building. The `--noEmit` flag is incompatible with `--build` for project references. Type declarations in `packages/*/dist/` are generated outputs — do not edit them.
+Packages (`@whisper/crypto`, `@whisper/core`) are bundled with **tsdown** (not `tsc --build`). Running `bun run build` from the repo root calls `tsdown` in each package and emits ESM output to `packages/*/dist/`. These are generated — do not edit them. Type-checking uses `tsc --noEmit` per package via `bun run typecheck`.
 
 ## Architecture
 
@@ -69,7 +69,7 @@ platforms/
 
 **`@whisper/crypto`** (`packages/crypto/src/index.ts`) — pure crypto utilities: `generateKey`, `encrypt`, `decrypt`, `deriveKeyFromPassword`, and Base58 encode/decode. Uses `globalThis.crypto` (Web Crypto), so it runs in browsers, Cloudflare Workers, Vercel Edge, and Node.js 20+. No dependencies.
 
-**`@whisper/core`** (`packages/core/src/`) — platform-agnostic Hono API. `createApp(storage)` takes a `StorageAdapter` and returns a fully configured Hono app. The `StorageAdapter` interface (`storage.ts`) has three methods: `save`, `get`, `delete`. Adding a new platform means implementing this interface.
+**`@whisper/core`** (`packages/core/src/`) — platform-agnostic Hono API. `createApp(storage)` takes a `StorageAdapter` and returns a fully configured Hono app. The `StorageAdapter` interface (`storage.ts`) has four methods: `save`, `get`, `delete`, `consume`. The `consume` method must be atomic — it checks expiry/view limits, increments `viewCount`, and deletes burn-after-reading secrets in one operation. Adding a new platform means implementing this interface.
 
 **`@whisper/vercel`** (`platforms/vercel/`) — wires `createApp` with `UpstashStorage` (Upstash Redis via HTTP). Entry point is `api/index.ts` as a Vercel Edge Function. Deploy with `vercel --prod` from `platforms/vercel/`.
 
@@ -78,10 +78,14 @@ platforms/
 ### Go module
 
 ```
-cmd/whisper/         CLI entry point (cobra commands: create, get, version)
+cmd/whisper/         CLI entry point (cobra commands: create, get, delete, version)
 internal/crypto/     AES-256-GCM + Base58 — Go equivalent of @whisper/crypto
 internal/api/        HTTP client for the Whisper API
+internal/ui/create/  Bubbletea TUI for interactive secret creation
+internal/ui/get/     Bubbletea TUI for retrieving/displaying secrets
 ```
+
+The `create` command launches an interactive Bubbletea TUI by default; it switches to headless mode when `--quiet`, `--json`, `--text`, `--file`, or piped stdin is used. Stdin input is capped at 512 KB.
 
 The Go crypto (`internal/crypto`) is intentionally interoperable with `@whisper/crypto`: same algorithm (AES-256-GCM, 12-byte IV, base64 encoding), same Base58 alphabet (Bitcoin-style). Secrets created by the CLI can be decrypted by a web client and vice versa.
 
