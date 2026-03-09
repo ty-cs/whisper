@@ -42,8 +42,8 @@ When a recipient opens the URL, the browser extracts the key from the fragment l
 # Install dependencies
 bun install
 
-# Start the API server (in-memory storage, port 4000)
-bun run dev
+# Start the API server (port 3000)
+vercel dev
 
 # In a separate terminal, start the web UI (port 3001)
 bun run dev:web
@@ -51,7 +51,7 @@ bun run dev:web
 
 Open [http://localhost:3001](http://localhost:3001).
 
-> **Note:** The CLI defaults to `http://localhost:3000`. When running against the local dev server, pass `--server http://localhost:4000` or set `WHISPER_API_URL=http://localhost:4000`.
+> **Note:** The CLI defaults to `http://localhost:3001` (Next.js, which proxies `/api/*` to the API server). Local CLI dev requires both servers running: `vercel dev` (API on port 3000) and `bun run dev:web` (Next.js on port 3001).
 
 ## CLI
 

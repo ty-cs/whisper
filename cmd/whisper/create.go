@@ -246,10 +246,10 @@ func resolveServer(flag string) string {
 	if flag != "" {
 		return strings.TrimRight(flag, "/")
 	}
-	if env := os.Getenv("WHISPER_API_URL"); env != "" {
+	if env := os.Getenv("WHISPER_BASE_URL"); env != "" {
 		return strings.TrimRight(env, "/")
 	}
-	return DefaultAPIURL
+	return DefaultBaseURL
 }
 
 func isTerminalStdin() bool {

@@ -49,10 +49,10 @@ func TestRunCreateFlagValidation(t *testing.T) {
 }
 
 func TestResolveServer(t *testing.T) {
-	originalDefault := DefaultAPIURL
-	t.Cleanup(func() { DefaultAPIURL = originalDefault })
+	originalDefault := DefaultBaseURL
+	t.Cleanup(func() { DefaultBaseURL = originalDefault })
 
-	DefaultAPIURL = "https://default.example.com"
+	DefaultBaseURL = "https://default.example.com"
 
 	tests := []struct {
 		name   string
@@ -90,9 +90,9 @@ func TestResolveServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envVar != "" {
-				t.Setenv("WHISPER_API_URL", tt.envVar)
+				t.Setenv("WHISPER_BASE_URL", tt.envVar)
 			} else {
-				t.Setenv("WHISPER_API_URL", "")
+				t.Setenv("WHISPER_BASE_URL", "")
 			}
 
 			got := resolveServer(tt.flag)

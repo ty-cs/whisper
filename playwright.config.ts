@@ -1,25 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const useRemoteApi = !!process.env.WHISPER_API_URL;
-const useRemoteWeb = !!process.env.WHISPER_WEB_URL;
-const useFullyRemote = useRemoteApi && useRemoteWeb;
-const apiBaseUrl = process.env.WHISPER_API_URL ?? 'http://localhost:3000';
-
-// Local web server entries, conditionally included
-const localApiServer = {
-    // bun run dev uses in-memory storage — no Redis credentials needed locally.
-    // vercel dev requires Upstash env vars; use WHISPER_API_URL for that in CI.
-    command: 'bun run dev',
-    url: `${apiBaseUrl}/api/health`,
-    reuseExistingServer: !process.env.CI,
-};
-const localWebServer = {
-    command: 'bun run dev:web',
-    url: 'http://localhost:3001',
-    reuseExistingServer: !process.env.CI,
-    // When using a remote API, tell Next.js to proxy /api/* there instead of localhost:3000.
-    env: useRemoteApi ? { API_URL: process.env.WHISPER_API_URL! } : undefined,
-};
+const baseURL = process.env.WHISPER_BASE_URL ?? 'http://localhost:3001';
 
 export default defineConfig({
     testDir: './apps/web/tests',
@@ -29,7 +10,7 @@ export default defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: process.env.CI ? 'github' : 'html',
     use: {
-        baseURL: process.env.WHISPER_WEB_URL ?? 'http://localhost:3001',
+        baseURL,
         trace: 'on-first-retry',
         screenshot: 'only-on-failure',
         actionTimeout: 10_000,
@@ -54,12 +35,20 @@ export default defineConfig({
         },
     ],
 
-    // When both services are remote (CI with deployed URLs), skip all local servers.
-    // When only the API is remote, still start the web frontend locally.
-    // When nothing is remote, start both.
-    webServer: useFullyRemote
+    // When a remote deployment is configured, skip all local servers.
+    // Otherwise start both the API and web frontend locally.
+    webServer: process.env.WHISPER_BASE_URL
         ? undefined
-        : useRemoteApi
-          ? [localWebServer]
-          : [localApiServer, localWebServer],
+        : [
+              {
+                  command: 'bun run dev',
+                  url: 'http://localhost:3000/api/health',
+                  reuseExistingServer: !process.env.CI,
+              },
+              {
+                  command: 'bun run dev:web',
+                  url: 'http://localhost:3001',
+                  reuseExistingServer: !process.env.CI,
+              },
+          ],
 });

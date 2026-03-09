@@ -24,8 +24,8 @@ func resolveVersion() string {
 	return "dev"
 }
 
-// DefaultAPIURL is the fallback server when no --server flag or WHISPER_API_URL env var is set.
-var DefaultAPIURL = "http://localhost:3000"
+// DefaultBaseURL is the fallback server when no --server flag or WHISPER_BASE_URL env var is set.
+var DefaultBaseURL = "http://localhost:3001"
 
 func main() {
 	root := &cobra.Command{
