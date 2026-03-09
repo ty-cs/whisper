@@ -1,16 +1,9 @@
 import type { Metadata } from 'next';
-import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import { Toaster } from 'sonner';
 import { Providers } from '@/components/providers';
 import { ServerStatus } from '@/components/server-status';
-
-const jetBrainsMono = JetBrains_Mono({
-  weight: ['400', '700', '800'],
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
-});
 
 export const metadata: Metadata = {
   title: 'WHISPER | Anonymous E2EE secret sharing',
@@ -24,8 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${jetBrainsMono.variable} flex flex-col items-center p-4 sm:p-8 bg-[var(--background)] text-[var(--foreground)]`}>
+      <body className="flex flex-col items-center p-4 sm:p-8 bg-[var(--background)] text-[var(--foreground)]">
         <Providers>
           <div className="w-full max-w-5xl my-4 sm:my-8 flex flex-col border border-[var(--border)] min-h-[calc(100vh-4rem)] relative z-10 bg-[var(--background)]/90 shadow-2xl shadow-black/50 animate-fade-in-up rounded-none">
             <header className="w-full border-b border-[var(--border)] p-4 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-1 sm:gap-4 bg-[var(--background)]">
