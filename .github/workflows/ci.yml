@@ -24,6 +24,9 @@ jobs:
       - name: Lint & Format
         run: bun run lint
 
+      - name: Build packages
+        run: bun run build
+
       - name: Typecheck
         run: bun run typecheck
 
