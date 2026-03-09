@@ -39,19 +39,12 @@ When a recipient opens the URL, the browser extracts the key from the fragment l
 ### Run locally
 
 ```bash
-# Install dependencies
 bun install
-
-# Start the API server (port 3000)
-vercel dev
-
-# In a separate terminal, start the web UI (port 3001)
-bun run dev:web
+vercel dev       # API server on :3000
+bun run dev:web  # web UI on :3001, rewrites /api/* → :3000 (separate terminal)
 ```
 
-Open [http://localhost:3001](http://localhost:3001).
-
-> **Note:** The CLI defaults to `http://localhost:3001` (Next.js, which proxies `/api/*` to the API server). Local CLI dev requires both servers running: `vercel dev` (API on port 3000) and `bun run dev:web` (Next.js on port 3001).
+Open [http://localhost:3001](http://localhost:3001). The CLI also points here by default.
 
 ## CLI
 
