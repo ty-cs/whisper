@@ -20,7 +20,7 @@ func createCmd() *cobra.Command {
 	var text string
 	var file string
 	var expires string
-	var noBurn bool
+	var burn bool
 	var maxViews int
 	var quiet bool
 	var jsonOutput bool
@@ -37,12 +37,12 @@ Reads from stdin if piped, skipping the typing interface.`,
   whisper create --text "my secret"
   whisper create --file credentials.txt
   echo "my secret" | whisper create
-  whisper create --text "inline" --expires 5m --no-burn --quiet
+  whisper create --text "inline" --expires 5m --quiet
   whisper create --text "json test" --json`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCreate(cmd, server, text, file, expires, noBurn, maxViews, quiet, jsonOutput, password)
+			return runCreate(cmd, server, text, file, expires, burn, maxViews, quiet, jsonOutput, password)
 		},
 	}
 
@@ -50,8 +50,8 @@ Reads from stdin if piped, skipping the typing interface.`,
 	cmd.Flags().StringVarP(&text, "text", "t", "", "Secret text (skips TUI input)")
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Read secret from file (skips TUI input)")
 	cmd.Flags().StringVarP(&expires, "expires", "e", "24h", "Expiry time (5m, 1h, 24h, 7d, 30d)")
-	cmd.Flags().BoolVar(&noBurn, "no-burn", false, "Disable burn-after-reading")
-	cmd.Flags().IntVarP(&maxViews, "max-views", "m", 0, "Max view count (0=unlimited; only applies when --no-burn)")
+	cmd.Flags().BoolVar(&burn, "burn", false, "Burn after reading (deleted after first view)")
+	cmd.Flags().IntVarP(&maxViews, "max-views", "m", 0, "Max view count (0=unlimited; >1 disables --burn)")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Output only the URL (no TUI)")
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, `Output JSON {"url":"...","id":"...","expiresAt":N}`)
 	cmd.Flags().StringVar(&password, "password", "", "Password-protect the secret")
@@ -59,7 +59,7 @@ Reads from stdin if piped, skipping the typing interface.`,
 	return cmd
 }
 
-func runCreate(cmd *cobra.Command, server, text, file, expires string, noBurn bool, maxViews int, quiet, jsonOutput bool, password string) error {
+func runCreate(cmd *cobra.Command, server, text, file, expires string, burn bool, maxViews int, quiet, jsonOutput bool, password string) error {
 	if quiet && jsonOutput {
 		return fmt.Errorf("--quiet and --json are mutually exclusive")
 	}
@@ -81,7 +81,11 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, noBurn bo
 		return fmt.Errorf("invalid --max-views value %d; must be between 0 and 10000", maxViews)
 	}
 
-	burnAfterReading := !noBurn
+	if burn && maxViews > 1 {
+		return fmt.Errorf("--burn and --max-views are mutually exclusive; --burn limits to 1 view")
+	}
+
+	burnAfterReading := burn
 	baseURL := resolveServer(server)
 
 	// Determine input source and enforce mutual exclusion
@@ -192,10 +196,7 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 
 	mv := maxViews
 	if burnAfterReading {
-		if maxViews > 1 {
-			fmt.Fprintf(os.Stderr, "warning: --max-views ignored because burn-after-reading is enabled\n")
-		}
-		mv = 1
+		mv = 1 // enforce single-view on the server side
 	}
 
 	req := &api.CreateRequest{

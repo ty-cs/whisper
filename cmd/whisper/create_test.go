@@ -31,6 +31,16 @@ func TestRunCreateFlagValidation(t *testing.T) {
 			args:            []string{"--quiet"},
 			wantErrContains: "input required",
 		},
+		{
+			name:            "--burn and --max-views > 1 are mutually exclusive",
+			args:            []string{"--burn", "--max-views", "5", "--quiet", "--text", "hello"},
+			wantErrContains: "mutually exclusive",
+		},
+		{
+			name:            "--burn and --max-views 2 are mutually exclusive",
+			args:            []string{"--burn", "--max-views", "2", "--quiet", "--text", "hello"},
+			wantErrContains: "mutually exclusive",
+		},
 	}
 
 	for _, tt := range tests {
