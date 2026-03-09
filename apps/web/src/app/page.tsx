@@ -49,6 +49,8 @@ export default function Home() {
     },
   });
 
+  const isPending = createSecretMutation.isPending;
+
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!text.trim()) return;
@@ -108,7 +110,6 @@ export default function Home() {
       </div>
     );
   }
-
   return (
     <div className="flex-1 flex flex-col animate-fade-in w-full font-mono">
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-8">
@@ -133,7 +134,7 @@ export default function Home() {
             onChange={(e) => setText(e.target.value)}
             className="term-input flex-1 min-h-[300px] border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] p-8 resize-none leading-relaxed text-sm sm:text-base focus:bg-[var(--muted)]/10 appearance-none outline-none"
             placeholder="Type secret payload here..."
-            disabled={createSecretMutation.isPending}
+            disabled={isPending}
           />
         </div>
 
@@ -151,7 +152,7 @@ export default function Home() {
                 value={expiresIn}
                 onChange={(e) => setExpiresIn(e.target.value)}
                 className="term-input w-full cursor-pointer border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] px-3 h-12 !rounded-none outline-none appearance-none bg-transparent relative z-10"
-                disabled={createSecretMutation.isPending}>
+                disabled={isPending}>
                 <option value="5m">5 MINUTES</option>
                 <option value="1h">1 HOUR</option>
                 <option value="24h">24 HOURS</option>
@@ -183,7 +184,7 @@ export default function Home() {
               }}
               className="term-input border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] px-3 h-12 !rounded-none appearance-none outline-none disabled:opacity-40 disabled:cursor-not-allowed"
               placeholder="0 (UNLIMITED)"
-              disabled={createSecretMutation.isPending || burnAfterReading}
+              disabled={isPending || burnAfterReading}
             />
             <p className="text-[10px] text-[var(--muted-fg)] uppercase tracking-wide opacity-70">
               {maxViews === 0
@@ -237,28 +238,26 @@ export default function Home() {
               onChange={(e) => setPassword(e.target.value)}
               className="term-input border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] px-3 h-12 !rounded-none appearance-none outline-none"
               placeholder="Blank = No Password"
-              disabled={createSecretMutation.isPending}
+              disabled={isPending}
             />
           </div>
         </div>
 
         <button
           type="submit"
-          disabled={createSecretMutation.isPending || !text.trim()}
+          disabled={isPending || !text.trim()}
           className={`w-full mt-8 py-4 px-6 border font-bold uppercase tracking-[0.2em] font-mono transition-all duration-100 ease-in-out rounded-none flex items-center justify-center gap-4 relative overflow-hidden group
             ${
-              createSecretMutation.isPending
-                ? 'term-btn-processing border-[var(--foreground)]'
-                : 'bg-[var(--foreground)] text-[#050505] border-[var(--foreground)] hover:bg-transparent hover:text-[var(--foreground)] active:scale-[0.99]'
+              isPending
+                ? 'bg-(--foreground) text-[#050505] border-(--foreground) opacity-75 cursor-wait'
+                : 'bg-(--foreground) text-[#050505] border-(--foreground) hover:bg-transparent hover:text-(--foreground) active:scale-[0.99]'
             }
-            ${!text.trim() ? 'opacity-30 cursor-not-allowed border-[var(--border)]' : ''}
+            ${!isPending && !text.trim() ? 'opacity-30 cursor-not-allowed border-(--border)' : ''}
           `}>
-          {createSecretMutation.isPending ? (
+          {isPending ? (
             <div className="flex items-center gap-3">
               <span className="w-4 h-4 border-2 border-[#050505] border-t-transparent rounded-full animate-spin"></span>
-              <span className="tracking-[0.3em] font-black">
-                ENCRYPTING_CORE...
-              </span>
+              <span className="tracking-[0.3em] font-black">ENCRYPTING...</span>
             </div>
           ) : (
             <>
