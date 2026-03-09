@@ -25,7 +25,7 @@ export default function ViewSecretPage({
   // 1. Fetch the encrypted payload
   const {
     data: payload,
-    isLoading: isFetching,
+    status,
     error: fetchError,
   } = useQuery({
     queryKey: ['secret', id],
@@ -107,10 +107,7 @@ export default function ViewSecretPage({
     }
   }, [payload, decryptedText, decryptMutation]);
 
-  if (
-    isFetching ||
-    (payload && !payload.hasPassword && !decryptedText && !decryptionError)
-  ) {
+  if (status === 'pending') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center animate-fade-in font-mono">
         <div className="flex flex-col items-center gap-6 px-4">
@@ -123,7 +120,7 @@ export default function ViewSecretPage({
     );
   }
 
-  if (fetchError || (!payload && !isFetching)) {
+  if (status === 'error') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-xl mx-auto font-mono">
         <div className="w-full text-center space-y-6 flex flex-col items-center px-4">
@@ -144,7 +141,79 @@ export default function ViewSecretPage({
     );
   }
 
-  if (payload?.hasPassword && !decryptedText) {
+  // status === 'success': payload is guaranteed defined
+
+  if (decryptedText) {
+    const isDestroyed =
+      payload.burnAfterReading ||
+      (payload.maxViews > 0 && payload.viewCount >= payload.maxViews);
+
+    return (
+      <div className="flex-1 flex flex-col animate-fade-in w-full font-mono">
+        <div className="w-full flex-1 flex flex-col relative space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--muted)] pb-4 animate-fade-in-up delay-300">
+            <h2 className="text-sm font-bold tracking-widest uppercase text-[var(--foreground)] flex items-center gap-2">
+              <span className="animate-blink">&gt;</span> DECRYPTED
+            </h2>
+            <div className="flex items-center gap-2 pr-2 sm:pr-0">
+              {isDestroyed ? (
+                <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
+                  DESTROYED
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <textarea
+            readOnly
+            value={decryptedText}
+            className="w-full bg-transparent border border-[var(--border)] outline-none p-6 flex-1 min-h-[350px] resize-none leading-relaxed text-[var(--foreground)] text-sm sm:text-base animate-fade-in-up delay-400"
+          />
+
+          <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t border-[var(--muted)] animate-fade-in-up delay-500">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(decryptedText);
+                toast.success('COPIED_TO_CLIPBOARD');
+              }}
+              className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
+              <span className="group-hover/btn:translate-x-1 transition-transform">
+                -&gt;
+              </span>{' '}
+              COPY_CONTENTS
+            </button>
+
+            {isDestroyed ? (
+              <Link
+                href="/"
+                className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center flex items-center justify-center gap-2 group/btn">
+                <span className="group-hover/btn:translate-x-1 transition-transform">
+                  -&gt;
+                </span>{' '}
+                RETURN_TO_BASE
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-[#050505] flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed">
+                <span className="group-hover/btn:translate-x-1 transition-transform">
+                  -&gt;
+                </span>{' '}
+                {deleteMutation.isPending
+                  ? 'DESTROYING...'
+                  : 'DESTROY_AND_LEAVE'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (payload.hasPassword) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-md mx-auto font-mono">
         <div className="w-full space-y-8 flex flex-col items-center text-center px-4">
@@ -203,61 +272,6 @@ export default function ViewSecretPage({
     );
   }
 
-  if (decryptedText) {
-    return (
-      <div className="flex-1 flex flex-col animate-fade-in w-full font-mono">
-        <div className="w-full flex-1 flex flex-col relative space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--muted)] pb-4 animate-fade-in-up delay-300">
-            <h2 className="text-sm font-bold tracking-widest uppercase text-[var(--foreground)] flex items-center gap-2">
-              <span className="animate-blink">&gt;</span> DECRYPTED
-            </h2>
-            <div className="flex items-center gap-2 pr-2 sm:pr-0">
-              {payload?.burnAfterReading ||
-              ((payload?.maxViews ?? 0) > 0 &&
-                (payload?.viewCount ?? 0) >= (payload?.maxViews ?? 0)) ? (
-                <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
-                  DESTROYED
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <textarea
-            readOnly
-            value={decryptedText}
-            className="w-full bg-transparent border border-[var(--border)] outline-none p-6 flex-1 min-h-[350px] resize-none leading-relaxed text-[var(--foreground)] text-sm sm:text-base animate-fade-in-up delay-400"
-          />
-
-          <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t border-[var(--muted)] animate-fade-in-up delay-500">
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(decryptedText);
-                toast.success('COPIED_TO_CLIPBOARD');
-              }}
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
-              <span className="group-hover/btn:translate-x-1 transition-transform">
-                -&gt;
-              </span>{' '}
-              COPY_CONTENTS
-            </button>
-
-            <button
-              type="button"
-              onClick={() => deleteMutation.mutate()}
-              disabled={deleteMutation.isPending}
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6 text-center !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-[#050505] flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed">
-              <span className="group-hover/btn:translate-x-1 transition-transform">
-                -&gt;
-              </span>{' '}
-              {deleteMutation.isPending ? 'DESTROYING...' : 'DESTROY_AND_LEAVE'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (decryptionError) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-xl mx-auto font-mono">
@@ -279,5 +293,15 @@ export default function ViewSecretPage({
     );
   }
 
-  return null;
+  // Auto-decryption in progress (no password, mutation pending)
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center animate-fade-in font-mono">
+      <div className="flex flex-col items-center gap-6 px-4">
+        <span className="w-8 h-8 border-2 border-[var(--foreground)] border-t-[var(--background)] rounded-full animate-spin"></span>
+        <h2 className="text-sm font-bold tracking-widest uppercase text-[var(--foreground)] flex items-center gap-2">
+          <span className="animate-blink">&gt;</span> DECRYPTING_VAULT...
+        </h2>
+      </div>
+    </div>
+  );
 }
