@@ -185,6 +185,11 @@ export default function Home() {
               placeholder="0 (UNLIMITED)"
               disabled={createSecretMutation.isPending || burnAfterReading}
             />
+            <p className="text-[10px] text-[var(--muted-fg)] uppercase tracking-wide opacity-70">
+              {maxViews === 0
+                ? 'Set to 0 for unlimited views until expiry.'
+                : `Secret will be deleted after ${maxViews} ${maxViews === 1 ? 'view' : 'views'}.`}
+            </p>
           </div>
 
           {/* Burn After Reading */}
@@ -205,8 +210,12 @@ export default function Home() {
               </p>
             </div>
             <div
-              className={`whitespace-nowrap shrink-0 text-xl font-bold tracking-widest ${burnAfterReading ? 'text-[var(--foreground)]' : 'text-[var(--muted)] group-hover:text-[var(--foreground)]'}`}>
-              [{burnAfterReading ? 'X' : ' '}]
+              className={`whitespace-nowrap shrink-0 text-xs font-bold tracking-widest border px-2 py-1 transition-colors ${
+                burnAfterReading
+                  ? 'bg-[var(--foreground)] text-[#050505] border-[var(--foreground)]'
+                  : 'text-[var(--muted-fg)] border-[var(--muted)] group-hover:border-[var(--foreground)] group-hover:text-[var(--foreground)]'
+              }`}>
+              {burnAfterReading ? 'ENABLED' : 'DISABLED'}
             </div>
           </button>
 
