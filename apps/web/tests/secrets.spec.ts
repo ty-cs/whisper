@@ -105,7 +105,7 @@ test.describe('Create secret form', () => {
 
 test.describe('Plain secret lifecycle', () => {
   test('create → view → read decrypted content', async ({ page }) => {
-    const secretText = 'my-plain-secret-' + Date.now();
+    const secretText = `my-plain-secret-${Date.now()}`;
     const shareUrl = await createSecretAndGetUrl(page, { text: secretText });
 
     expect(shareUrl).toMatch(/\/s\/[\w-]+#/);
@@ -116,7 +116,7 @@ test.describe('Plain secret lifecycle', () => {
   });
 
   test('copy contents copies plaintext to clipboard', async ({ page }) => {
-    const secretText = 'copy-test-' + Date.now();
+    const secretText = `copy-test-${Date.now()}`;
     const shareUrl = await createSecretAndGetUrl(page, { text: secretText });
 
     await page.goto(shareUrl);
@@ -141,7 +141,7 @@ test.describe('Plain secret lifecycle', () => {
 
   test('destroy secret redirects to home', async ({ page }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'to-be-destroyed-' + Date.now(),
+      text: `to-be-destroyed-${Date.now()}`,
     });
 
     await page.goto(shareUrl);
@@ -156,7 +156,7 @@ test.describe('Plain secret lifecycle', () => {
     browser,
   }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'destroy-then-view-' + Date.now(),
+      text: `destroy-then-view-${Date.now()}`,
     });
 
     // First visit: view and destroy
@@ -174,7 +174,7 @@ test.describe('Plain secret lifecycle', () => {
   });
 
   test('create another resets the form', async ({ page }) => {
-    await createSecretAndGetUrl(page, { text: 'reset-test-' + Date.now() });
+    await createSecretAndGetUrl(page, { text: `reset-test-${Date.now()}` });
 
     await page.getByRole('button', { name: /CREATE_ANOTHER/ }).click();
 
@@ -188,7 +188,7 @@ test.describe('Plain secret lifecycle', () => {
 
 test.describe('Password-protected secret lifecycle', () => {
   test('create → view with correct password → decrypted', async ({ page }) => {
-    const secretText = 'password-secret-' + Date.now();
+    const secretText = `password-secret-${Date.now()}`;
     const password = 'hunter2';
     const shareUrl = await createSecretAndGetUrl(page, {
       text: secretText,
@@ -207,7 +207,7 @@ test.describe('Password-protected secret lifecycle', () => {
 
   test('wrong password shows FATAL error', async ({ page }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'wrong-pw-test-' + Date.now(),
+      text: `wrong-pw-test-${Date.now()}`,
       password: 'correct-horse',
     });
 
@@ -222,7 +222,7 @@ test.describe('Password-protected secret lifecycle', () => {
 
   test('error clears when password input changes', async ({ page }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'clear-error-test-' + Date.now(),
+      text: `clear-error-test-${Date.now()}`,
       password: 'secret123',
     });
 
@@ -242,7 +242,7 @@ test.describe('Password-protected secret lifecycle', () => {
     page,
   }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'unlock-disabled-' + Date.now(),
+      text: `unlock-disabled-${Date.now()}`,
       password: 'somepass',
     });
 
@@ -259,7 +259,7 @@ test.describe('Password-protected secret lifecycle', () => {
 test.describe('Burn after reading', () => {
   test('DESTROYED badge visible on first view', async ({ page }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'burn-me-' + Date.now(),
+      text: `burn-me-${Date.now()}`,
       burnAfterReading: true,
     });
 
@@ -270,7 +270,7 @@ test.describe('Burn after reading', () => {
 
   test('secret is inaccessible after first view', async ({ page, browser }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'burn-once-' + Date.now(),
+      text: `burn-once-${Date.now()}`,
       burnAfterReading: true,
     });
 
@@ -294,7 +294,7 @@ test.describe('Max views', () => {
     page,
   }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'max-views-test-' + Date.now(),
+      text: `max-views-test-${Date.now()}`,
       maxViews: 1,
     });
 
@@ -308,7 +308,7 @@ test.describe('Max views', () => {
     browser,
   }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'max-views-access-' + Date.now(),
+      text: `max-views-access-${Date.now()}`,
       maxViews: 1,
     });
 
@@ -332,7 +332,7 @@ test.describe('Expiry options', () => {
     test(`creates a secret with expiry ${value} and it is viewable`, async ({
       page,
     }) => {
-      const secretText = `expiry-${value}-` + Date.now();
+      const secretText = `expiry-${value}-${Date.now()}`;
       const shareUrl = await createSecretAndGetUrl(page, {
         text: secretText,
         expiresIn: value,
@@ -392,7 +392,7 @@ test.describe('Error states', () => {
 
   test('missing URL fragment causes decryption error', async ({ page }) => {
     const shareUrl = await createSecretAndGetUrl(page, {
-      text: 'fragment-test-' + Date.now(),
+      text: `fragment-test-${Date.now()}`,
     });
     // Strip the # fragment
     const urlWithoutFragment = shareUrl.split('#')[0];
