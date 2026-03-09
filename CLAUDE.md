@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## General Guidelines
+
+- Before implementing solutions, discuss the root cause and architecture with the user first. Don't jump straight to code changes for non-trivial problems.
+
 ## Project Overview
 
 Whisper is an anonymous end-to-end encrypted (E2EE) secret sharing tool. It has two independent components in one repo:
@@ -112,3 +116,7 @@ The `#fragment` is never sent to the server. The CLI parses this in `cmd/whisper
 ### CLI server resolution
 
 The CLI resolves the base URL in order: `--server` flag → `$WHISPER_BASE_URL` env var → `http://localhost:3001`.
+
+## Development Conventions
+
+- When setting up new tooling (Playwright, testing frameworks, etc.), always use the official CLI scaffolding/init commands first rather than manually creating config files.
