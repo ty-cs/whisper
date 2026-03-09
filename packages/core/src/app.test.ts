@@ -142,6 +142,66 @@ describe('@whisper/core app', () => {
         expect(body.code).toBe(ErrorCode.MAX_VIEWS_EXCEEDED);
     });
 
+    it('should return 400 for empty body', async () => {
+        const storage = new MemoryStorage();
+        const app = createApp(storage);
+
+        const res = await app.request('/api/secrets', {
+            method: 'POST',
+            body: '',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        expect(res.status).toBe(400);
+        const body = (await res.json()) as { code: number };
+        expect(body.code).toBe(ErrorCode.MISSING_FIELDS);
+    });
+
+    it('should return 400 for non-object body', async () => {
+        const storage = new MemoryStorage();
+        const app = createApp(storage);
+
+        const res = await app.request('/api/secrets', {
+            method: 'POST',
+            body: JSON.stringify('just a string'),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        expect(res.status).toBe(400);
+        const body = (await res.json()) as { code: number };
+        expect(body.code).toBe(ErrorCode.MISSING_FIELDS);
+    });
+
+    it('should return 400 when ciphertext is missing', async () => {
+        const storage = new MemoryStorage();
+        const app = createApp(storage);
+
+        const res = await app.request('/api/secrets', {
+            method: 'POST',
+            body: JSON.stringify({ iv: 'test-iv', expiresIn: '1h' }),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        expect(res.status).toBe(400);
+        const body = (await res.json()) as { code: number };
+        expect(body.code).toBe(ErrorCode.MISSING_FIELDS);
+    });
+
+    it('should return 400 when iv is missing', async () => {
+        const storage = new MemoryStorage();
+        const app = createApp(storage);
+
+        const res = await app.request('/api/secrets', {
+            method: 'POST',
+            body: JSON.stringify({ ciphertext: 'test-ct', expiresIn: '1h' }),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        expect(res.status).toBe(400);
+        const body = (await res.json()) as { code: number };
+        expect(body.code).toBe(ErrorCode.MISSING_FIELDS);
+    });
+
     it('should reject burnAfterReading combined with maxViews > 1', async () => {
         const storage = new MemoryStorage();
         const app = createApp(storage);

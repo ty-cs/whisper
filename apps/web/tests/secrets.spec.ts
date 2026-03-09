@@ -345,6 +345,35 @@ test.describe('Expiry options', () => {
   }
 });
 
+// ─── Payload size guard ───────────────────────────────────────────────────────
+
+test.describe('Payload size guard', () => {
+  test('shows error toast when input exceeds 700 KB', async ({ page }) => {
+    await page.goto('/');
+
+    // Generate a string just over 700 KB
+    const oversized = 'a'.repeat(700 * 1024 + 1);
+    await page.locator('#text').fill(oversized);
+    await page.getByRole('button', { name: /ENCRYPT/ }).click();
+
+    await expect(page.getByText(/Payload too large/i)).toBeVisible();
+    // Should not navigate away — form stays on the create page
+    await expect(page.locator('#text')).toBeVisible();
+  });
+
+  test('does not block normal-sized input', async ({ page }) => {
+    await page.goto('/');
+
+    await page.locator('#text').click();
+    await page
+      .locator('#text')
+      .fill('small secret that is well under the limit');
+    await page.getByRole('button', { name: /ENCRYPT/ }).click();
+
+    await expect(page.getByText('ENCRYPTION SUCCESSFUL')).toBeVisible();
+  });
+});
+
 // ─── Error states ─────────────────────────────────────────────────────────────
 
 test.describe('Error states', () => {

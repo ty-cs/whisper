@@ -7,6 +7,7 @@ import {
   generateKey,
   uint8ToBase58,
 } from '@whisper/crypto';
+import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { createSecret } from '@/lib/api';
@@ -48,9 +49,15 @@ export default function Home() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!text.trim()) return;
+
+    const byteSize = new Blob([text]).size;
+    if (byteSize > 700 * 1024) {
+      toast.error('Payload too large. Maximum input size is 700 KB.');
+      return;
+    }
 
     createSecretMutation.mutate();
   };

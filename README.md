@@ -29,19 +29,6 @@ shareURL = https://host/s/<id>#<key>
 
 When a recipient opens the URL, the browser extracts the key from the fragment locally, fetches the ciphertext, and decrypts it — all without the server learning the key.
 
-## Packages
-
-This repo is a Bun monorepo alongside a Go module.
-
-| Package | Description |
-|---|---|
-| `packages/crypto` | `@whisper/crypto` — isomorphic AES-256-GCM library (Web Crypto API, no deps) |
-| `packages/core` | `@whisper/core` — platform-agnostic Hono API factory + `StorageAdapter` interface |
-| `platforms/vercel` | `@whisper/vercel` — Vercel Edge Function with Upstash Redis storage |
-| `apps/web` | Next.js web UI |
-| `cmd/whisper` | Go CLI (`create`, `get`, `delete`) |
-| `internal/crypto` | Go AES-256-GCM + Base58, interoperable with `@whisper/crypto` |
-
 ## Getting started
 
 ### Prerequisites
@@ -102,95 +89,6 @@ whisper get "https://host/s/<id>#<key>"
 whisper delete "https://host/s/<id>#<key>"
 ```
 
-### `create` flags
-
-| Flag | Default | Description |
-|---|---|---|
-| `-t, --text` | — | Secret text (skips interactive prompt) |
-| `-f, --file` | — | Read secret from a file |
-| `-e, --expires` | `24h` | Expiry: `5m`, `1h`, `24h`, `7d`, `30d` |
-| `--no-burn` | — | Disable burn-after-reading |
-| `-m, --max-views` | `0` | Max view count (0 = unlimited; requires `--no-burn`) |
-| `--password` | — | Password-protect the secret |
-| `-q, --quiet` | — | Output only the URL |
-| `-j, --json` | — | Output JSON |
-| `-s, --server` | — | API server URL (overrides env and default) |
-
-### `get` flags
-
-| Flag | Description |
-|---|---|
-| `-p, --password` | Password for protected secrets |
-| `-q, --quiet` | Output only the plaintext |
-| `-j, --json` | Output JSON |
-
-### Server resolution
-
-The CLI resolves the API server in this order:
-
-1. `--server <url>` flag
-2. `$WHISPER_API_URL` environment variable
-3. `http://localhost:3000` (default)
-
-## API
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `POST` | `/api/secrets` | Create encrypted secret |
-| `GET` | `/api/secrets/:id` | Retrieve (and optionally burn) secret |
-| `DELETE` | `/api/secrets/:id` | Delete secret |
-
-`POST /api/secrets` body:
-
-```json
-{
-  "ciphertext": "<base64>",
-  "iv": "<base64>",
-  "expiresIn": "5m | 1h | 24h | 7d | 30d",
-  "burnAfterReading": false,
-  "maxViews": 0,
-  "hasPassword": false
-}
-```
-
-### Response format
-
-Every response includes a `code` field (`0` = success, non-zero = error).
-
-**POST `/api/secrets`** (201):
-```json
-{ "code": 0, "id": "<nanoid>", "expiresAt": 1234567890, "burnAfterReading": false }
-```
-
-**GET `/api/secrets/:id`** (200):
-```json
-{ "code": 0, "ciphertext": "...", "iv": "...", "burnAfterReading": false, "hasPassword": false, "expiresAt": 1234567890, "maxViews": 0, "viewCount": 1 }
-```
-
-**DELETE `/api/secrets/:id`** (200):
-```json
-{ "code": 0, "deleted": true }
-```
-
-**Error response**:
-```json
-{ "code": 1006, "error": "Secret not found or has expired" }
-```
-
-**Error codes**:
-
-| Code | Meaning |
-|------|---------|
-| 0 | OK (success) |
-| 1001 | Missing required fields |
-| 1002 | Invalid `expiresIn` value |
-| 1003 | Payload too large (> 1 MB) |
-| 1004 | `maxViews` exceeds maximum (10,000) |
-| 1005 | Conflicting options |
-| 1006 | Secret not found or expired |
-| 5000 | Internal server error |
-
 ## Deployment
 
 ### Vercel (recommended)
@@ -213,65 +111,12 @@ UPSTASH_REDIS_REST_URL=https://your-instance.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your-token
 ```
 
-### Custom storage backend
-
-Implement the `StorageAdapter` interface from `@whisper/core` and pass it to `createApp`:
-
-```ts
-import { createApp } from "@whisper/core";
-
-const app = createApp({
-  save(record, ttlSeconds) { /* ... */ },
-  get(id) { /* ... */ },
-  delete(id) { /* ... */ },
-  consume(id) { /* atomic: check limits, increment viewCount, burn if needed */ },
-});
-```
-
-## Development
-
-```bash
-# Type-check all packages
-bun run typecheck
-
-# Build all packages
-bun run build
-
-# Run all tests (Vitest)
-bun run test
-
-# Run E2E tests (Playwright)
-bun run e2e
-bun run e2e:ui   # interactive UI mode
-
-# Lint
-bun run lint
-
-# Format
-bun run format
-```
-
-### Go
-
-```bash
-# Build the CLI binary
-go build ./cmd/whisper
-
-# Run all Go tests
-go test ./...
-
-# Run only internal package tests
-go test -v ./internal/...
-```
-
-CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`).
-
 ## Security
 
 - Encryption: AES-256-GCM, 256-bit key, 12-byte random IV
 - Password KDF: PBKDF2-SHA256, 600,000 iterations; the 32-byte URL fragment key (`urlKey`) serves as the salt — never transmitted to the server
 - Key encoding: Base58 (Bitcoin alphabet, no ambiguous characters)
-- Max payload: 1 MB
+- Max payload: 1 MB (server); CLI stdin is capped at 512 KB
 - The server stores only ciphertext and IV — never the key or password salt
 
 If you find a security vulnerability, please disclose it responsibly by opening a private security advisory on GitHub rather than a public issue.

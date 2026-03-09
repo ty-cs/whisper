@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { HTTPException } from 'hono/http-exception';
 import { validator } from 'hono/validator';
 import { nanoid } from 'nanoid';
 import type {
@@ -38,6 +39,15 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
 
     // --- Global error handler ---
     app.onError((err, c) => {
+        if (err instanceof HTTPException) {
+            return c.json(
+                {
+                    code: ErrorCode.MISSING_FIELDS,
+                    error: err.message,
+                } satisfies ApiErrorResponse,
+                err.status,
+            );
+        }
         console.error(err);
         return c.json(
             {
@@ -69,7 +79,18 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
     // --- Create Secret ---
     app.post(
         '/api/secrets',
-        validator('json', (value) => value as CreateSecretRequest),
+        validator('json', (value, c) => {
+            if (!value || typeof value !== 'object') {
+                return c.json(
+                    {
+                        code: ErrorCode.MISSING_FIELDS,
+                        error: 'Missing required fields: ciphertext, iv',
+                    } satisfies ApiErrorResponse,
+                    400,
+                );
+            }
+            return value as CreateSecretRequest;
+        }),
         async (c) => {
             const body = c.req.valid('json');
 

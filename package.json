@@ -14,10 +14,12 @@
         "format": "biome format --write .",
         "format:web": "biome format --write apps/web",
         "test": "vitest run",
-        "typecheck": "bun run --filter @whisper/crypto typecheck && bun run --filter @whisper/core typecheck",
+        "typecheck": "bun run --filter @whisper/crypto typecheck && bun run --filter @whisper/core typecheck && bun run --filter web typecheck",
         "lint": "biome check .",
         "prepare": "lefthook install",
         "e2e": "playwright test",
+        "e2e:chrome": "playwright test --project=chromium --headed",
+        "e2e:chrome:ui": "playwright test --project=chromium --ui",
         "e2e:ui": "playwright test --ui"
     },
     "devDependencies": {
