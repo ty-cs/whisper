@@ -33,11 +33,11 @@ bun run build
 bun run typecheck
 
 # Run all tests
-bun test
+bun run test
 
 # Run tests for a specific package
-bun test packages/crypto
-bun test packages/core
+bun run test packages/crypto
+bun run test packages/core
 ```
 
 ### Go (CLI)
