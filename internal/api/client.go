@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -31,6 +32,9 @@ func NewClient(baseURL string) *Client {
 // host. The decryption key lives in the URL fragment, so an HTTP connection
 // (or any logging proxy in front of it) could expose the key in server/proxy
 // logs, browser history, or Referer headers.
+//
+// Set WHISPER_INSECURE=1 to bypass this check when connecting to internal
+// HTTP endpoints in Docker or CI environments (e.g. http://api:4000).
 func ValidateBaseURL(baseURL string) error {
 	u, err := url.Parse(baseURL)
 	if err != nil {
@@ -39,8 +43,11 @@ func ValidateBaseURL(baseURL string) error {
 	if u.Scheme == "http" {
 		host := u.Hostname()
 		if host != "localhost" && host != "127.0.0.1" && host != "::1" {
+			if os.Getenv("WHISPER_INSECURE") == "1" {
+				return nil
+			}
 			return fmt.Errorf(
-				"insecure server URL %q: the decryption key is embedded in the URL fragment and must not be sent over plain HTTP — use HTTPS",
+				"insecure server URL %q: the decryption key is embedded in the URL fragment and must not be sent over plain HTTP — use HTTPS, or set WHISPER_INSECURE=1 to override",
 				baseURL,
 			)
 		}

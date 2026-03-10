@@ -175,10 +175,25 @@ func TestValidateBaseURL(t *testing.T) {
 			if !tt.wantErr && err != nil {
 				t.Errorf("ValidateBaseURL(%q): unexpected error: %v", tt.url, err)
 			}
-			if err != nil && !strings.Contains(err.Error(), "use HTTPS") {
-				t.Errorf("ValidateBaseURL(%q): error %q should mention 'use HTTPS'", tt.url, err.Error())
+			if err != nil && !strings.Contains(err.Error(), "WHISPER_INSECURE=1") {
+				t.Errorf("ValidateBaseURL(%q): error %q should mention WHISPER_INSECURE=1", tt.url, err.Error())
 			}
 		})
+	}
+}
+
+func TestValidateBaseURL_InsecureOverride(t *testing.T) {
+	t.Setenv("WHISPER_INSECURE", "1")
+
+	// Remote HTTP hosts that would normally be rejected are allowed with the override.
+	for _, u := range []string{
+		"http://api:4000",
+		"http://10.0.0.5:3001",
+		"http://whisper.example.com",
+	} {
+		if err := ValidateBaseURL(u); err != nil {
+			t.Errorf("WHISPER_INSECURE=1: ValidateBaseURL(%q) returned unexpected error: %v", u, err)
+		}
 	}
 }
 
