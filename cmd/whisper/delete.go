@@ -27,6 +27,10 @@ func deleteCmd() *cobra.Command {
 				serverURL = resolveServer(server)
 			}
 
+			if err := api.ValidateBaseURL(serverURL); err != nil {
+				return err
+			}
+
 			client := api.NewClient(serverURL)
 			if err := client.DeleteSecret(id); err != nil {
 				return err

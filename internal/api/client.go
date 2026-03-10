@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -24,6 +25,27 @@ func NewClient(baseURL string) *Client {
 			Timeout: 30 * time.Second,
 		},
 	}
+}
+
+// ValidateBaseURL returns an error if baseURL uses plain HTTP with a non-local
+// host. The decryption key lives in the URL fragment, so an HTTP connection
+// (or any logging proxy in front of it) could expose the key in server/proxy
+// logs, browser history, or Referer headers.
+func ValidateBaseURL(baseURL string) error {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return fmt.Errorf("invalid server URL %q: %w", baseURL, err)
+	}
+	if u.Scheme == "http" {
+		host := u.Hostname()
+		if host != "localhost" && host != "127.0.0.1" && host != "::1" {
+			return fmt.Errorf(
+				"insecure server URL %q: the decryption key is embedded in the URL fragment and must not be sent over plain HTTP — use HTTPS",
+				baseURL,
+			)
+		}
+	}
+	return nil
 }
 
 // CreateRequest is the body sent to POST /api/secrets.
