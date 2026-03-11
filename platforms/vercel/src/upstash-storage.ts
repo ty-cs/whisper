@@ -66,65 +66,40 @@ export class UpstashStorage implements StorageAdapter {
 
     async save(record: SecretRecord, ttlSeconds: number): Promise<void> {
         const key = `secret:${record.id}`;
-        console.log('[upstash] save', {
-            key,
-            ttlSeconds,
-            burnAfterReading: record.burnAfterReading,
-            maxViews: record.maxViews,
-        });
         await this.redis.set(key, JSON.stringify(record), { ex: ttlSeconds });
-        console.log('[upstash] save ok', { key });
     }
 
     async get(id: string): Promise<SecretRecord | null> {
         const key = `secret:${id}`;
-        console.log('[upstash] get', { key });
         const data = await this.redis.get<string>(key);
-        console.log('[upstash] [debug] data', data);
         if (!data) {
-            console.log('[upstash] get miss', { key });
             return null;
         }
 
         // @upstash/redis may auto-parse JSON, handle both cases
-        console.log(`[upstash] get typeof data: ${typeof data}`);
         if (typeof data === 'string') {
-            console.log(`[upstash] get manual parse executed`);
             return JSON.parse(data) as SecretRecord;
         }
-        console.log(`[upstash] get auto-parsed!`);
         return data as unknown as SecretRecord;
     }
 
     async delete(id: string): Promise<boolean> {
         const key = `secret:${id}`;
-        console.log('[upstash] delete', { key });
         const deleted = await this.redis.del(key);
-        console.log('[upstash] delete result', { key, deleted });
         return deleted > 0;
     }
 
     async consume(id: string): Promise<SecretRecord | null> {
         const key = `secret:${id}`;
         const now = Math.floor(Date.now() / 1000);
-        console.log('[upstash] consume', { key, now });
         const result = await this.redis.eval<unknown[], SecretRecord | null>(
             CONSUME_SCRIPT,
             [key],
             [now],
         );
         if (!result) {
-            console.log(
-                '[upstash] consume miss (expired, exhausted, or not found)',
-                { key },
-            );
             return null;
         }
-        console.log('[upstash] consume hit', {
-            key,
-            viewCount: result.viewCount,
-            burned: result.burnAfterReading,
-        });
         return result;
     }
 }

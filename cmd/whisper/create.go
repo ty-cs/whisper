@@ -87,6 +87,9 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, burn bool
 
 	burnAfterReading := burn
 	baseURL := resolveServer(server)
+	if err := api.ValidateBaseURL(baseURL); err != nil {
+		return err
+	}
 
 	// Determine input source and enforce mutual exclusion
 	textChanged := cmd.Flags().Changed("text")

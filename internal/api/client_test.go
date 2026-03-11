@@ -144,6 +144,61 @@ func TestCreateSecretNetworkError(t *testing.T) {
 	assertErrContains(t, err, "could not reach the server")
 }
 
+func TestValidateBaseURL(t *testing.T) {
+	tests := []struct {
+		url     string
+		wantErr bool
+	}{
+		// HTTPS — always allowed
+		{"https://whisper.example.com", false},
+		{"https://whisper.example.com/", false},
+
+		// HTTP + localhost variants — allowed for local dev
+		{"http://localhost:3001", false},
+		{"http://localhost", false},
+		{"http://127.0.0.1:3001", false},
+		{"http://127.0.0.1", false},
+		{"http://127.0.0.2", false},       // rest of 127.0.0.0/8
+		{"http://127.255.255.254", false},  // last of 127.0.0.0/8
+		{"http://[::1]:3001", false},
+
+		// HTTP + remote host — rejected
+		{"http://whisper.example.com", true},
+		{"http://evil.example.com", true},
+		{"http://192.168.1.1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			err := ValidateBaseURL(tt.url)
+			if tt.wantErr && err == nil {
+				t.Errorf("ValidateBaseURL(%q): expected error, got nil", tt.url)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("ValidateBaseURL(%q): unexpected error: %v", tt.url, err)
+			}
+			if err != nil && !strings.Contains(err.Error(), "WHISPER_INSECURE=1") {
+				t.Errorf("ValidateBaseURL(%q): error %q should mention WHISPER_INSECURE=1", tt.url, err.Error())
+			}
+		})
+	}
+}
+
+func TestValidateBaseURL_InsecureOverride(t *testing.T) {
+	t.Setenv("WHISPER_INSECURE", "1")
+
+	// Remote HTTP hosts that would normally be rejected are allowed with the override.
+	for _, u := range []string{
+		"http://api:4000",
+		"http://10.0.0.5:3001",
+		"http://whisper.example.com",
+	} {
+		if err := ValidateBaseURL(u); err != nil {
+			t.Errorf("WHISPER_INSECURE=1: ValidateBaseURL(%q) returned unexpected error: %v", u, err)
+		}
+	}
+}
+
 func assertErrContains(t *testing.T, err error, substr string) {
 	t.Helper()
 	if err == nil {

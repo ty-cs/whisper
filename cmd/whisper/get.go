@@ -51,6 +51,10 @@ func runGet(rawURL, password string, quiet, jsonOutput bool) error {
 		return err
 	}
 
+	if err := api.ValidateBaseURL(serverURL); err != nil {
+		return err
+	}
+
 	apiClient := api.NewClient(serverURL)
 
 	if quiet || jsonOutput {
