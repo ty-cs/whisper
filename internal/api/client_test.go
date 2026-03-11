@@ -158,6 +158,8 @@ func TestValidateBaseURL(t *testing.T) {
 		{"http://localhost", false},
 		{"http://127.0.0.1:3001", false},
 		{"http://127.0.0.1", false},
+		{"http://127.0.0.2", false},       // rest of 127.0.0.0/8
+		{"http://127.255.255.254", false},  // last of 127.0.0.0/8
 		{"http://[::1]:3001", false},
 
 		// HTTP + remote host — rejected

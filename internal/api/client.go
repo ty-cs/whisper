@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -42,7 +43,13 @@ func ValidateBaseURL(baseURL string) error {
 	}
 	if u.Scheme == "http" {
 		host := u.Hostname()
-		if host != "localhost" && host != "127.0.0.1" && host != "::1" {
+		isLocal := host == "localhost"
+		if !isLocal {
+			if ip := net.ParseIP(host); ip != nil {
+				isLocal = ip.IsLoopback()
+			}
+		}
+		if !isLocal {
 			if os.Getenv("WHISPER_INSECURE") == "1" {
 				return nil
 			}
