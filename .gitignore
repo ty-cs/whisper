@@ -27,7 +27,7 @@ Thumbs.db
 .vercel
 .env*.local
 
-.claude/worktrees/
+.claude/
 
 # Playwright
 /test-results/
