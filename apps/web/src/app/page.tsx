@@ -7,6 +7,7 @@ import {
   generateKey,
   uint8ToBase58,
 } from '@whisper/crypto';
+import { QRCodeSVG } from 'qrcode.react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -66,45 +67,72 @@ export default function Home() {
 
   if (resultUrl) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-2xl mx-auto space-y-6">
-        <div className="w-full space-y-6 flex flex-col items-start px-4">
-          <p className="text-[var(--foreground)] font-bold text-lg uppercase tracking-widest break-all">
-            [ OK ] ENCRYPTION SUCCESSFUL
-          </p>
-          <div className="text-[var(--muted-fg)] text-sm space-y-2">
-            <p>Your message has been securely encrypted.</p>
-            <p>Share the following one-time link carefully:</p>
+      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in w-full max-w-2xl mx-auto">
+        <div className="w-full flex flex-col px-4 gap-8">
+          <div className="space-y-2">
+            <p className="text-[var(--foreground)] font-bold text-lg uppercase tracking-widest">
+              [ OK ] ENCRYPTION SUCCESSFUL
+            </p>
+            <p className="text-[var(--muted-fg)] text-sm">
+              Share the link or scan the QR code. Keep it safe.
+            </p>
           </div>
 
-          <div className="w-full relative group mt-4 flex items-center gap-2">
-            <div className="term-input flex-1 text-sm sm:text-base selection:bg-[var(--foreground)] selection:text-[#050505] border-dashed overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-[var(--muted)] scrollbar-track-transparent py-3">
-              {resultUrl}
+          <div className="w-full border border-[var(--border)] animate-fade-in-up delay-200">
+            <div className="flex flex-col sm:flex-row">
+              {/* QR Code */}
+              <div className="flex items-center justify-center p-6 sm:p-8 sm:border-r border-b sm:border-b-0 border-[var(--border)] bg-[var(--muted)]/20">
+                <div className="p-2.5 bg-[#fafafa]">
+                  <QRCodeSVG
+                    value={resultUrl}
+                    size={140}
+                    level="M"
+                    bgColor="#fafafa"
+                    fgColor="#09090b"
+                  />
+                </div>
+              </div>
+
+              {/* URL + Actions */}
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 p-4 sm:p-6">
+                  <p className="text-[10px] font-bold tracking-widest text-[var(--muted-fg)] uppercase mb-3">
+                    [ SHARE LINK ]
+                  </p>
+                  <div className="text-sm text-[var(--foreground)] break-all leading-relaxed selection:bg-[var(--foreground)] selection:text-[#050505] font-mono max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--muted)] scrollbar-track-transparent">
+                    {resultUrl}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row border-t border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resultUrl);
+                      toast.success('COPIED_TO_CLIPBOARD');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold tracking-widest uppercase text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[#050505] transition-all duration-100 border-b sm:border-b-0 sm:border-r border-[var(--border)] group/copy">
+                    <span className="group-hover/copy:scale-110 transition-transform">
+                      &gt;
+                    </span>
+                    COPY_LINK
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResultUrl('');
+                      setText('');
+                      setPassword('');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold tracking-widest uppercase text-[var(--muted-fg)] hover:bg-[var(--foreground)] hover:text-[#050505] transition-all duration-100 group/new">
+                    <span className="group-hover/new:scale-110 transition-transform">
+                      +
+                    </span>
+                    NEW_SECRET
+                  </button>
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(resultUrl);
-                toast.success('COPIED_TO_CLIPBOARD');
-              }}
-              className="term-btn text-sm py-2 px-2 h-[46px] flex items-center justify-center shrink-0">
-              [ COPY ]
-            </button>
-          </div>
-
-          <div className="pt-4 w-full">
-            <button
-              type="button"
-              onClick={() => {
-                setResultUrl('');
-                setText('');
-                setPassword('');
-              }}
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
-              <span className="group-hover/btn:translate-x-1 transition-transform">
-                -&gt;
-              </span>{' '}
-              CREATE_ANOTHER
-            </button>
           </div>
         </div>
       </div>

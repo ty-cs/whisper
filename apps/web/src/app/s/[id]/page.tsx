@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { deleteSecret, getSecret } from '@/lib/api';
+import { formatTimeLeft } from '@/lib/format-time-left';
 
 export default function ViewSecretPage({
   params,
@@ -21,6 +22,7 @@ export default function ViewSecretPage({
   const [decryptedText, setDecryptedText] = useState('');
   const [password, setPassword] = useState('');
   const [decryptionError, setDecryptionError] = useState('');
+  const [timeLeft, setTimeLeft] = useState('');
 
   // 1. Fetch the encrypted payload
   const {
@@ -107,6 +109,15 @@ export default function ViewSecretPage({
     }
   }, [payload, decryptedText, decryptMutation]);
 
+  useEffect(() => {
+    if (!payload?.expiresAt) return;
+    setTimeLeft(formatTimeLeft(payload.expiresAt));
+    const interval = setInterval(() => {
+      setTimeLeft(formatTimeLeft(payload.expiresAt));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [payload?.expiresAt]);
+
   if (status === 'pending') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center animate-fade-in font-mono">
@@ -159,6 +170,10 @@ export default function ViewSecretPage({
               {isDestroyed ? (
                 <span className="px-3 py-1 bg-[var(--background)] border border-red-500 text-red-500 text-[10px] font-bold tracking-widest uppercase animate-blink">
                   DESTROYED
+                </span>
+              ) : timeLeft ? (
+                <span className="px-3 py-1 bg-[var(--background)] border border-[var(--muted)] text-[var(--muted-fg)] text-[10px] font-bold tracking-widest uppercase">
+                  TTL: {timeLeft}
                 </span>
               ) : null}
             </div>
