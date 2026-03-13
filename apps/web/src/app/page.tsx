@@ -99,7 +99,9 @@ export default function Home() {
                   <p className="text-[10px] font-bold tracking-widest text-[var(--muted-fg)] uppercase mb-3">
                     [ SHARE LINK ]
                   </p>
-                  <div className="text-sm text-[var(--foreground)] break-all leading-relaxed selection:bg-[var(--foreground)] selection:text-[#050505] font-mono max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--muted)] scrollbar-track-transparent">
+                  <div
+                    data-testid="share-url"
+                    className="text-sm text-[var(--foreground)] break-all leading-relaxed selection:bg-[var(--foreground)] selection:text-[#050505] font-mono max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--muted)] scrollbar-track-transparent">
                     {resultUrl}
                   </div>
                 </div>

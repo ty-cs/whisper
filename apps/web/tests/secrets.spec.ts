@@ -41,7 +41,7 @@ async function createSecretAndGetUrl(
   await expect(page.getByText('ENCRYPTION SUCCESSFUL')).toBeVisible();
 
   // Read URL from the DOM — the share URL is rendered in a div on the success page.
-  const shareUrl = await page.locator('div.term-input').textContent();
+  const shareUrl = await page.getByTestId('share-url').textContent();
   return shareUrl?.trim() ?? '';
 }
 
@@ -176,7 +176,7 @@ test.describe('Plain secret lifecycle', () => {
   test('create another resets the form', async ({ page }) => {
     await createSecretAndGetUrl(page, { text: `reset-test-${Date.now()}` });
 
-    await page.getByRole('button', { name: /CREATE_ANOTHER/ }).click();
+    await page.getByRole('button', { name: /NEW_SECRET/ }).click();
 
     await expect(page.locator('#text')).toHaveValue('');
     await expect(page.locator('#password')).toHaveValue('');
