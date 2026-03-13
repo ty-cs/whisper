@@ -41,7 +41,7 @@ export default defineConfig({
         ? undefined
         : [
               {
-                  command: 'bun run dev',
+                  command: 'bunx vercel dev',
                   url: 'http://localhost:3000/api/health',
                   reuseExistingServer: !process.env.CI,
               },
