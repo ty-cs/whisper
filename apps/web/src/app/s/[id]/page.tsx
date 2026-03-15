@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { deleteSecret, getSecret } from '@/lib/api';
-import { formatTimeLeft } from '@/lib/format-time-left';
+import { EXPIRED_SENTINEL, formatTimeLeft } from '@/lib/format-time-left';
 
 export default function ViewSecretPage({
   params,
@@ -111,9 +111,14 @@ export default function ViewSecretPage({
 
   useEffect(() => {
     if (!payload?.expiresAt) return;
-    setTimeLeft(formatTimeLeft(payload.expiresAt));
+    const expiresAt = payload.expiresAt;
+    setTimeLeft(formatTimeLeft(expiresAt));
     const interval = setInterval(() => {
-      setTimeLeft(formatTimeLeft(payload.expiresAt));
+      const newTimeLeft = formatTimeLeft(expiresAt);
+      setTimeLeft(newTimeLeft);
+      if (newTimeLeft === EXPIRED_SENTINEL) {
+        clearInterval(interval);
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, [payload?.expiresAt]);
@@ -157,7 +162,8 @@ export default function ViewSecretPage({
   if (decryptedText) {
     const isDestroyed =
       payload.burnAfterReading ||
-      (payload.maxViews > 0 && payload.viewCount >= payload.maxViews);
+      (payload.maxViews > 0 && payload.viewCount >= payload.maxViews) ||
+      timeLeft === EXPIRED_SENTINEL;
 
     return (
       <div className="flex-1 flex flex-col animate-fade-in w-full font-mono">
