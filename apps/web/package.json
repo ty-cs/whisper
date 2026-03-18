@@ -16,7 +16,7 @@
     "@whisper/crypto": "workspace:*",
     "animejs": "^4.3.6",
     "ky": "^1.14.3",
-    "next": "16.1.6",
+    "next": "16.1.7",
     "qrcode.react": "^4.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
