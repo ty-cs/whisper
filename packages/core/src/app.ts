@@ -239,4 +239,4 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
 }
 
 export type AppType = ReturnType<typeof createApp>;
-export type { StorageAdapter, SecretRecord };
+export type { SecretRecord, StorageAdapter };
