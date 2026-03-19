@@ -14,7 +14,7 @@
         "dev": "bun run src/dev-server.ts"
     },
     "dependencies": {
-        "hono": "^4.12.7",
-        "nanoid": "^5.1.6"
+        "hono": "^4.12.8",
+        "nanoid": "^5.1.7"
     }
 }
