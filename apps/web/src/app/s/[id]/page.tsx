@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { GetSecretResponse } from '@whisper/core';
-import { base58ToUint8, decrypt, deriveKeyFromPassword } from '@whisper/crypto';
+import {
+  base58ToUint8,
+  decryptPayload,
+  deriveKeyFromPassword,
+  type WhisperPayload,
+} from '@whisper/crypto';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
@@ -19,7 +24,8 @@ export default function ViewSecretPage({
   const id = resolvedParams.id;
   const router = useRouter();
 
-  const [decryptedText, setDecryptedText] = useState('');
+  const [decryptedPayload, setDecryptedPayload] =
+    useState<WhisperPayload | null>(null);
   const [password, setPassword] = useState('');
   const [decryptionError, setDecryptionError] = useState('');
   const [timeLeft, setTimeLeft] = useState('');
@@ -68,16 +74,13 @@ export default function ViewSecretPage({
         finalKey = await deriveKeyFromPassword(pass, urlKey);
       }
 
-      return await decrypt(
-        {
-          ciphertext: payloadData.ciphertext,
-          iv: payloadData.iv,
-        },
+      return await decryptPayload(
+        { ciphertext: payloadData.ciphertext, iv: payloadData.iv },
         finalKey,
       );
     },
-    onSuccess: (plaintext) => {
-      setDecryptedText(plaintext);
+    onSuccess: (result) => {
+      setDecryptedPayload(result);
       setDecryptionError('');
     },
     onError: (err: Error) => {
@@ -101,13 +104,13 @@ export default function ViewSecretPage({
     if (
       payload &&
       !payload.hasPassword &&
-      !decryptedText &&
+      !decryptedPayload &&
       !decryptMutation.isPending &&
       !decryptMutation.isError
     ) {
       decryptMutation.mutate({ payloadData: payload, pass: '' });
     }
-  }, [payload, decryptedText, decryptMutation]);
+  }, [payload, decryptedPayload, decryptMutation]);
 
   useEffect(() => {
     if (!payload?.expiresAt) return;
@@ -159,11 +162,23 @@ export default function ViewSecretPage({
 
   // status === 'success': payload is guaranteed defined
 
-  if (decryptedText) {
+  if (decryptedPayload) {
     const isDestroyed =
       payload.burnAfterReading ||
       (payload.maxViews > 0 && payload.viewCount >= payload.maxViews) ||
       timeLeft === EXPIRED_SENTINEL;
+
+    const handleDownload = (fp: Extract<WhisperPayload, { type: 'file' }>) => {
+      const blob = new Blob([fp.data.buffer as ArrayBuffer], {
+        type: fp.mimeType,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fp.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
 
     return (
       <div className="flex-1 flex flex-col animate-fade-in w-full font-mono">
@@ -185,25 +200,77 @@ export default function ViewSecretPage({
             </div>
           </div>
 
-          <textarea
-            readOnly
-            value={decryptedText}
-            className="w-full bg-transparent border border-[var(--border)] outline-none p-6 flex-1 min-h-[350px] resize-none leading-relaxed text-[var(--foreground)] text-sm sm:text-base animate-fade-in-up delay-400"
-          />
+          {decryptedPayload.type === 'text' ? (
+            <textarea
+              readOnly
+              value={decryptedPayload.text}
+              className="w-full bg-transparent border border-[var(--border)] outline-none p-6 flex-1 min-h-[350px] resize-none leading-relaxed text-[var(--foreground)] text-sm sm:text-base animate-fade-in-up delay-400"
+            />
+          ) : decryptedPayload.mimeType.startsWith('image/') ? (
+            <div className="border border-[var(--border)] animate-fade-in-up delay-400">
+              <div className="bg-[var(--muted)]/20 px-4 py-2.5 border-b border-[var(--border)] text-[10px] font-bold tracking-widest text-[var(--muted-fg)] uppercase">
+                [ FILE: {decryptedPayload.name} ·{' '}
+                {(decryptedPayload.data.length / 1024).toFixed(1)} KB ·{' '}
+                {decryptedPayload.mimeType} ]
+              </div>
+              <div className="flex items-center justify-center p-6">
+                {/* biome-ignore lint/performance/noAccumulatingSpread: new object URL per render is acceptable for a read-only view page */}
+                <img
+                  src={URL.createObjectURL(
+                    new Blob([decryptedPayload.data.buffer as ArrayBuffer], {
+                      type: decryptedPayload.mimeType,
+                    }),
+                  )}
+                  alt={decryptedPayload.name}
+                  className="max-w-full max-h-[60vh] object-contain"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="border border-[var(--border)] animate-fade-in-up delay-400">
+              <div className="bg-[var(--muted)]/20 px-4 py-2.5 border-b border-[var(--border)] text-[10px] font-bold tracking-widest text-[var(--muted-fg)] uppercase">
+                [ FILE: {decryptedPayload.name} ·{' '}
+                {(decryptedPayload.data.length / 1024).toFixed(1)} KB ·{' '}
+                {decryptedPayload.mimeType} ]
+              </div>
+              <div className="flex flex-col items-center justify-center gap-3 p-12">
+                <span className="text-4xl opacity-30">📄</span>
+                <p className="text-sm font-bold text-[var(--foreground)]">
+                  {decryptedPayload.name}
+                </p>
+                <p className="text-[10px] text-[var(--muted-fg)] uppercase tracking-wide">
+                  {(decryptedPayload.data.length / 1024).toFixed(1)} KB ·{' '}
+                  {decryptedPayload.mimeType}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t border-[var(--muted)] animate-fade-in-up delay-500">
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(decryptedText);
-                toast.success('COPIED_TO_CLIPBOARD');
-              }}
-              className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
-              <span className="group-hover/btn:translate-x-1 transition-transform">
-                -&gt;
-              </span>{' '}
-              COPY_CONTENTS
-            </button>
+            {decryptedPayload.type === 'text' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(decryptedPayload.text);
+                  toast.success('COPIED_TO_CLIPBOARD');
+                }}
+                className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
+                <span className="group-hover/btn:translate-x-1 transition-transform">
+                  -&gt;
+                </span>{' '}
+                COPY_CONTENTS
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleDownload(decryptedPayload)}
+                className="term-btn w-full sm:w-auto text-sm py-3 px-6 flex items-center justify-center gap-2 group/btn">
+                <span className="group-hover/btn:translate-x-1 transition-transform">
+                  -&gt;
+                </span>{' '}
+                DOWNLOAD_FILE
+              </button>
+            )}
 
             {isDestroyed ? (
               <Link
