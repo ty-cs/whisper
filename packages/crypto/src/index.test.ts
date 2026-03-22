@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
     base58ToUint8,
     decrypt,
+    decryptPayload,
     deriveKeyFromPassword,
     encrypt,
+    encryptPayload,
     generateKey,
     uint8ToBase58,
 } from './index.js';
@@ -69,5 +71,57 @@ describe('@whisper/crypto', () => {
 
         const decrypted = await decrypt(payload, key);
         expect(decrypted).toBe(plaintext);
+    });
+});
+
+describe('encryptPayload / decryptPayload', () => {
+    it('roundtrips a text payload', async () => {
+        const key = generateKey();
+        const encrypted = await encryptPayload(
+            { type: 'text', text: 'hello world' },
+            key,
+        );
+        expect(encrypted.ciphertext).toBeDefined();
+        const result = await decryptPayload(encrypted, key);
+        expect(result).toEqual({ type: 'text', text: 'hello world' });
+    });
+
+    it('roundtrips a file payload', async () => {
+        const key = generateKey();
+        const data = new Uint8Array([1, 2, 3, 255, 0, 128]);
+        const encrypted = await encryptPayload(
+            {
+                type: 'file',
+                name: 'test.bin',
+                mimeType: 'application/octet-stream',
+                data,
+            },
+            key,
+        );
+        const result = await decryptPayload(encrypted, key);
+        expect(result.type).toBe('file');
+        if (result.type === 'file') {
+            expect(result.name).toBe('test.bin');
+            expect(result.mimeType).toBe('application/octet-stream');
+            expect(result.data).toEqual(data);
+        }
+    });
+
+    it('decrypts a legacy plain-text secret (no envelope) as text', async () => {
+        const key = generateKey();
+        // Legacy secret: encrypted with the old `encrypt` function directly
+        const legacy = await encrypt('legacy secret', key);
+        const result = await decryptPayload(legacy, key);
+        expect(result).toEqual({ type: 'text', text: 'legacy secret' });
+    });
+
+    it('fails decryption with the wrong key', async () => {
+        const key1 = generateKey();
+        const key2 = generateKey();
+        const encrypted = await encryptPayload(
+            { type: 'text', text: 'secret' },
+            key1,
+        );
+        await expect(decryptPayload(encrypted, key2)).rejects.toThrow();
     });
 });
