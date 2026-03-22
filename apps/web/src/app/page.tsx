@@ -284,6 +284,7 @@ export default function Home() {
                   setIsDragging(true);
                 }}
                 onDragLeave={() => setIsDragging(false)}
+                onDragEnd={() => setIsDragging(false)}
                 className={`flex-1 min-h-[300px] border border-dashed flex flex-col items-center justify-center gap-4 transition-colors ${
                   isDragging
                     ? 'border-[var(--foreground)] bg-[var(--muted)]/10'
