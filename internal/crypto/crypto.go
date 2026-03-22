@@ -99,6 +99,9 @@ func EncryptWithKey(plaintext string, key []byte) (*EncryptedPayload, error) {
 // EncryptPayload encrypts a WhisperPayload into the structured envelope format.
 // Interoperable with @whisper/crypto's encryptPayload.
 func EncryptPayload(payload *WhisperPayload, key []byte) (*EncryptedPayload, error) {
+	if payload == nil {
+		return nil, errors.New("payload must not be nil")
+	}
 	env := whisperEnvelope{W: 1, Type: payload.Type}
 	switch payload.Type {
 	case "text":
@@ -141,9 +144,13 @@ func DecryptPayload(encrypted *EncryptedPayload, key []byte) (*WhisperPayload, e
 		if mimeType == "" {
 			mimeType = "application/octet-stream"
 		}
+		name := env.Name
+		if name == "" {
+			name = "file"
+		}
 		return &WhisperPayload{
 			Type:     "file",
-			Name:     env.Name,
+			Name:     name,
 			MimeType: mimeType,
 			Data:     data,
 		}, nil

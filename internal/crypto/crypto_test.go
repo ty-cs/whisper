@@ -159,6 +159,42 @@ func TestEncryptDecryptPayloadFile(t *testing.T) {
 	}
 }
 
+func TestEncryptPayloadNilPanics(t *testing.T) {
+	key, _ := GenerateKey()
+	_, err := EncryptPayload(nil, key)
+	if err == nil {
+		t.Fatal("expected error for nil payload")
+	}
+}
+
+func TestDecryptPayloadFileEmptyNameFallback(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey failed: %v", err)
+	}
+
+	// Encrypt an envelope where name is empty string — simulates missing name
+	original := &WhisperPayload{
+		Type:     "file",
+		Name:     "",
+		MimeType: "application/octet-stream",
+		Data:     []byte{1, 2, 3},
+	}
+	encrypted, err := EncryptPayload(original, key)
+	if err != nil {
+		t.Fatalf("EncryptPayload failed: %v", err)
+	}
+
+	result, err := DecryptPayload(encrypted, key)
+	if err != nil {
+		t.Fatalf("DecryptPayload failed: %v", err)
+	}
+
+	if result.Name != "file" {
+		t.Errorf("expected name fallback to 'file', got %q", result.Name)
+	}
+}
+
 func TestDecryptPayloadLegacy(t *testing.T) {
 	key, err := GenerateKey()
 	if err != nil {
