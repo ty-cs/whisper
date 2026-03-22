@@ -29,7 +29,7 @@ export type AppEnv = {
     };
 };
 
-const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
+const MAX_BODY_SIZE = 7 * 1024 * 1024; // 7 MB — accommodates 5 MB file + base64 overhead
 
 /**
  * Create a Hono app with the given storage adapter.
@@ -127,7 +127,7 @@ export function createApp(storage: StorageAdapter): Hono<AppEnv> {
                 return c.json(
                     {
                         code: ErrorCode.PAYLOAD_TOO_LARGE,
-                        error: 'Payload too large. Maximum 1 MB.',
+                        error: 'Payload too large. Maximum 7 MB.',
                     } satisfies ApiErrorResponse,
                     413,
                 );
