@@ -120,14 +120,22 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, burn bool
 		initialText = text
 		autoSubmit = true
 	} else if fileChanged {
-		data, err := os.ReadFile(file)
+		const maxFileSize = 5 * 1024 * 1024 // 5 MB
+		fi, err := os.Stat(file)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("file not found: %s", file)
+				return fmt.Errorf("file not found: %q", file)
 			}
 			if os.IsPermission(err) {
-				return fmt.Errorf("permission denied: %s", file)
+				return fmt.Errorf("permission denied: %q", file)
 			}
+			return fmt.Errorf("reading file: %w", err)
+		}
+		if fi.Size() > maxFileSize {
+			return fmt.Errorf("file too large: %q is %.1f MB; maximum is 5 MB", file, float64(fi.Size())/(1024*1024))
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
 			return fmt.Errorf("reading file: %w", err)
 		}
 		// File payloads always bypass the TUI — use headlessCreateFile directly.
@@ -262,6 +270,8 @@ func headlessCreateFile(client *api.Client, data []byte, filename, expiresIn str
 		Data:     data,
 	}
 
+	base58Key := crypto.KeyToBase58(urlKey)
+
 	payload, err := crypto.EncryptPayload(whisperPayload, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("encrypting: %w", err)
@@ -286,7 +296,6 @@ func headlessCreateFile(client *api.Client, data []byte, filename, expiresIn str
 		return err
 	}
 
-	base58Key := crypto.KeyToBase58(urlKey)
 	finalURL := fmt.Sprintf("%s/s/%s#%s", client.BaseURL, resp.ID, base58Key)
 
 	if jsonOutput {
@@ -302,15 +311,24 @@ func headlessCreateFile(client *api.Client, data []byte, filename, expiresIn str
 	return nil
 }
 
-// detectMIME returns the MIME type for a file. It tries the file extension first,
-// falls back to content sniffing, and finally returns "application/octet-stream".
+// detectMIME returns the MIME type for a file, without parameters.
+// It tries the file extension first, falls back to content sniffing.
 func detectMIME(filename string, data []byte) string {
 	if ext := filepath.Ext(filename); ext != "" {
 		if t := mime.TypeByExtension(ext); t != "" {
+			// Strip parameters (e.g. "text/html; charset=utf-8" → "text/html")
+			if mediaType, _, err := mime.ParseMediaType(t); err == nil {
+				return mediaType
+			}
 			return t
 		}
 	}
-	return http.DetectContentType(data)
+	// http.DetectContentType always returns a valid type (never empty)
+	t := http.DetectContentType(data)
+	if mediaType, _, err := mime.ParseMediaType(t); err == nil {
+		return mediaType
+	}
+	return t
 }
 
 // readPipedSecret reads all of stdin (caller must ensure stdin is piped).
