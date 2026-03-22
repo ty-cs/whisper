@@ -26,6 +26,7 @@ export default function ViewSecretPage({
 
   const [decryptedPayload, setDecryptedPayload] =
     useState<WhisperPayload | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [decryptionError, setDecryptionError] = useState('');
   const [timeLeft, setTimeLeft] = useState('');
@@ -100,6 +101,7 @@ export default function ViewSecretPage({
   });
 
   // Auto-decrypt if no password is required
+  const decryptMutationMutate = decryptMutation.mutate;
   useEffect(() => {
     if (
       payload &&
@@ -108,9 +110,15 @@ export default function ViewSecretPage({
       !decryptMutation.isPending &&
       !decryptMutation.isError
     ) {
-      decryptMutation.mutate({ payloadData: payload, pass: '' });
+      decryptMutationMutate({ payloadData: payload, pass: '' });
     }
-  }, [payload, decryptedPayload, decryptMutation]);
+  }, [
+    payload,
+    decryptedPayload,
+    decryptMutation.isPending,
+    decryptMutation.isError,
+    decryptMutationMutate,
+  ]);
 
   useEffect(() => {
     if (!payload?.expiresAt) return;
@@ -125,6 +133,32 @@ export default function ViewSecretPage({
     }, 1000);
     return () => clearInterval(interval);
   }, [payload?.expiresAt]);
+
+  // Create object URL for image preview and revoke on cleanup (Fix 1)
+  useEffect(() => {
+    if (
+      decryptedPayload?.type === 'file' &&
+      decryptedPayload.mimeType.startsWith('image/')
+    ) {
+      const blob = new Blob(
+        [
+          decryptedPayload.data.buffer.slice(
+            decryptedPayload.data.byteOffset,
+            decryptedPayload.data.byteOffset + decryptedPayload.data.byteLength,
+          ) as ArrayBuffer,
+        ],
+        {
+          type: decryptedPayload.mimeType,
+        },
+      );
+      const url = URL.createObjectURL(blob);
+      setImageUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+    setImageUrl(null);
+  }, [decryptedPayload]);
 
   if (status === 'pending') {
     return (
@@ -169,15 +203,23 @@ export default function ViewSecretPage({
       timeLeft === EXPIRED_SENTINEL;
 
     const handleDownload = (fp: Extract<WhisperPayload, { type: 'file' }>) => {
-      const blob = new Blob([fp.data.buffer as ArrayBuffer], {
-        type: fp.mimeType,
-      });
+      const blob = new Blob(
+        [
+          fp.data.buffer.slice(
+            fp.data.byteOffset,
+            fp.data.byteOffset + fp.data.byteLength,
+          ) as ArrayBuffer,
+        ],
+        {
+          type: fp.mimeType,
+        },
+      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = fp.name;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     };
 
     return (
@@ -214,16 +256,13 @@ export default function ViewSecretPage({
                 {decryptedPayload.mimeType} ]
               </div>
               <div className="flex items-center justify-center p-6">
-                {/* biome-ignore lint/performance/noAccumulatingSpread: new object URL per render is acceptable for a read-only view page */}
-                <img
-                  src={URL.createObjectURL(
-                    new Blob([decryptedPayload.data.buffer as ArrayBuffer], {
-                      type: decryptedPayload.mimeType,
-                    }),
-                  )}
-                  alt={decryptedPayload.name}
-                  className="max-w-full max-h-[60vh] object-contain"
-                />
+                {imageUrl && (
+                  <img
+                    src={imageUrl}
+                    alt={decryptedPayload.name}
+                    className="max-w-full max-h-[60vh] object-contain"
+                  />
+                )}
               </div>
             </div>
           ) : (
