@@ -29,6 +29,7 @@ Thumbs.db
 
 .claude/
 .superpowers/
+.worktrees/
 
 # Playwright
 /test-results/
