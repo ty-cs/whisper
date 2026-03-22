@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ty-cs/whisper/internal/api"
@@ -127,8 +130,9 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, burn bool
 			}
 			return fmt.Errorf("reading file: %w", err)
 		}
-		initialText = string(data)
-		autoSubmit = true
+		// File payloads always bypass the TUI — use headlessCreateFile directly.
+		client := api.NewClient(baseURL)
+		return headlessCreateFile(client, data, filepath.Base(file), expires, burnAfterReading, maxViews, password, jsonOutput)
 	} else if stdinPiped {
 		var err error
 		initialText, err = readPipedSecret()
@@ -229,6 +233,84 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 		fmt.Println(finalURL)
 	}
 	return nil
+}
+
+func headlessCreateFile(client *api.Client, data []byte, filename, expiresIn string, burnAfterReading bool, maxViews int, password string, jsonOutput bool) error {
+	mimeType := detectMIME(filename, data)
+
+	urlKey, err := crypto.GenerateKey()
+	if err != nil {
+		return fmt.Errorf("generating key: %w", err)
+	}
+
+	encryptionKey := urlKey
+	hasPassword := false
+
+	if password != "" {
+		derived, err := crypto.DeriveKeyFromPassword(password, urlKey)
+		if err != nil {
+			return fmt.Errorf("deriving key: %w", err)
+		}
+		encryptionKey = derived
+		hasPassword = true
+	}
+
+	whisperPayload := &crypto.WhisperPayload{
+		Type:     "file",
+		Name:     filename,
+		MimeType: mimeType,
+		Data:     data,
+	}
+
+	payload, err := crypto.EncryptPayload(whisperPayload, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("encrypting: %w", err)
+	}
+
+	mv := maxViews
+	if burnAfterReading {
+		mv = 1
+	}
+
+	req := &api.CreateRequest{
+		Ciphertext:       payload.Ciphertext,
+		IV:               payload.IV,
+		ExpiresIn:        expiresIn,
+		BurnAfterReading: burnAfterReading,
+		MaxViews:         mv,
+		HasPassword:      hasPassword,
+	}
+
+	resp, err := client.CreateSecret(req)
+	if err != nil {
+		return err
+	}
+
+	base58Key := crypto.KeyToBase58(urlKey)
+	finalURL := fmt.Sprintf("%s/s/%s#%s", client.BaseURL, resp.ID, base58Key)
+
+	if jsonOutput {
+		out, _ := json.Marshal(map[string]interface{}{
+			"url":       finalURL,
+			"id":        resp.ID,
+			"expiresAt": resp.ExpiresAt,
+		})
+		fmt.Println(string(out))
+	} else {
+		fmt.Println(finalURL)
+	}
+	return nil
+}
+
+// detectMIME returns the MIME type for a file. It tries the file extension first,
+// falls back to content sniffing, and finally returns "application/octet-stream".
+func detectMIME(filename string, data []byte) string {
+	if ext := filepath.Ext(filename); ext != "" {
+		if t := mime.TypeByExtension(ext); t != "" {
+			return t
+		}
+	}
+	return http.DetectContentType(data)
 }
 
 // readPipedSecret reads all of stdin (caller must ensure stdin is piped).
