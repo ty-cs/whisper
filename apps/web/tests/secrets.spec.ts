@@ -400,4 +400,26 @@ test.describe('Error states', () => {
     await page.goto(urlWithoutFragment);
     await expect(page.getByText('FATAL: DECRYPTION FAILED')).toBeVisible();
   });
+
+  test('wrong URL fragment key shows decryption failed with invalid key message', async ({
+    page,
+  }) => {
+    const ts = Date.now();
+    const url1 = await createSecretAndGetUrl(page, {
+      text: `wrong-key-a-${ts}`,
+    });
+    const url2 = await createSecretAndGetUrl(page, {
+      text: `wrong-key-b-${ts}`,
+    });
+
+    // Navigate to secret 1's path but with secret 2's key — both are valid 32-byte
+    // keys so all browsers throw OperationError rather than a key-import DataError.
+    const wrongKeyUrl = url1.split('#')[0] + '#' + url2.split('#')[1];
+
+    await page.goto(wrongKeyUrl);
+    await expect(page.getByText('FATAL: DECRYPTION FAILED')).toBeVisible();
+    await expect(
+      page.getByText(/Incorrect password or invalid key/i),
+    ).toBeVisible();
+  });
 });
