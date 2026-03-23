@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"math/big"
 
@@ -20,6 +21,26 @@ const base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwx
 type EncryptedPayload struct {
 	Ciphertext string `json:"ciphertext"`
 	IV         string `json:"iv"`
+}
+
+// WhisperPayload is the decrypted content of a Whisper secret.
+// Type is "text" or "file".
+type WhisperPayload struct {
+	Type     string // "text" or "file"
+	Text     string // non-empty for type=text
+	Name     string // filename for type=file
+	MimeType string // MIME type for type=file
+	Data     []byte // raw file bytes for type=file
+}
+
+// whisperEnvelope is the JSON structure encrypted inside the ciphertext.
+type whisperEnvelope struct {
+	W    int    `json:"__w"`
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
+	Name string `json:"name,omitempty"`
+	Mime string `json:"mime,omitempty"`
+	Data string `json:"data,omitempty"` // base64-encoded file bytes
 }
 
 // GenerateKey creates a cryptographically random 256-bit key.
@@ -73,6 +94,69 @@ func DeriveKeyFromPassword(password string, salt []byte) ([]byte, error) {
 // Equivalent to Encrypt but accepts the key as a parameter rather than generating one.
 func EncryptWithKey(plaintext string, key []byte) (*EncryptedPayload, error) {
 	return Encrypt(plaintext, key)
+}
+
+// EncryptPayload encrypts a WhisperPayload into the structured envelope format.
+// Interoperable with @whisper/crypto's encryptPayload.
+func EncryptPayload(payload *WhisperPayload, key []byte) (*EncryptedPayload, error) {
+	if payload == nil {
+		return nil, errors.New("payload must not be nil")
+	}
+	env := whisperEnvelope{W: 1, Type: payload.Type}
+	switch payload.Type {
+	case "text":
+		env.Text = payload.Text
+	case "file":
+		env.Name = payload.Name
+		env.Mime = payload.MimeType
+		env.Data = base64.StdEncoding.EncodeToString(payload.Data)
+	default:
+		return nil, errors.New("unknown payload type: " + payload.Type)
+	}
+
+	jsonBytes, err := json.Marshal(env)
+	if err != nil {
+		return nil, err
+	}
+	return Encrypt(string(jsonBytes), key)
+}
+
+// DecryptPayload decrypts an EncryptedPayload and parses the WhisperPayload envelope.
+// Legacy secrets (no __w key) are returned as text payloads for backward compatibility.
+func DecryptPayload(encrypted *EncryptedPayload, key []byte) (*WhisperPayload, error) {
+	plaintext, err := Decrypt(encrypted, key)
+	if err != nil {
+		return nil, err
+	}
+
+	var env whisperEnvelope
+	if jsonErr := json.Unmarshal([]byte(plaintext), &env); jsonErr != nil || env.W != 1 {
+		return &WhisperPayload{Type: "text", Text: plaintext}, nil
+	}
+
+	switch env.Type {
+	case "file":
+		data, err := base64.StdEncoding.DecodeString(env.Data)
+		if err != nil {
+			return nil, errors.New("invalid file data encoding in envelope")
+		}
+		mimeType := env.Mime
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		name := env.Name
+		if name == "" {
+			name = "file"
+		}
+		return &WhisperPayload{
+			Type:     "file",
+			Name:     name,
+			MimeType: mimeType,
+			Data:     data,
+		}, nil
+	default:
+		return &WhisperPayload{Type: "text", Text: env.Text}, nil
+	}
 }
 
 // Decrypt decrypts an AES-256-GCM encrypted payload.

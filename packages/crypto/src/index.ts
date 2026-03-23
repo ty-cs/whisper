@@ -14,6 +14,19 @@ export interface EncryptedPayload {
     iv: string; // base64
 }
 
+export type WhisperPayload =
+    | { type: 'text'; text: string }
+    | { type: 'file'; name: string; mimeType: string; data: Uint8Array };
+
+interface WhisperEnvelope {
+    __w: 1;
+    type: 'text' | 'file';
+    text?: string;
+    name?: string;
+    mime?: string;
+    data?: string; // base64-encoded file bytes
+}
+
 /**
  * Generate a random 256-bit encryption key.
  */
@@ -177,6 +190,71 @@ export function base58ToUint8(str: string): Uint8Array {
     const result = new Uint8Array(zeros + bytes.length);
     result.set(new Uint8Array(bytes), zeros);
     return result;
+}
+
+/**
+ * Encrypt a WhisperPayload (text or file) using AES-256-GCM.
+ * All new secrets — text and file — go through this function.
+ */
+export async function encryptPayload(
+    payload: WhisperPayload,
+    key: Uint8Array,
+): Promise<EncryptedPayload> {
+    let envelope: WhisperEnvelope;
+    if (payload.type === 'text') {
+        envelope = { __w: 1, type: 'text', text: payload.text };
+    } else {
+        envelope = {
+            __w: 1,
+            type: 'file',
+            name: payload.name,
+            mime: payload.mimeType,
+            data: uint8ToBase64(payload.data),
+        };
+    }
+    return encrypt(JSON.stringify(envelope), key);
+}
+
+/**
+ * Decrypt an EncryptedPayload back to a WhisperPayload.
+ * Handles both structured envelopes (new) and legacy plain-text secrets.
+ */
+export async function decryptPayload(
+    encrypted: EncryptedPayload,
+    key: Uint8Array,
+): Promise<WhisperPayload> {
+    const plaintext = await decrypt(encrypted, key);
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(plaintext);
+    } catch {
+        // Legacy plain-text secret
+        return { type: 'text', text: plaintext };
+    }
+
+    if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        !('__w' in parsed) ||
+        (parsed as WhisperEnvelope).__w !== 1
+    ) {
+        // JSON but no envelope marker — treat as legacy text
+        return { type: 'text', text: plaintext };
+    }
+
+    const env = parsed as WhisperEnvelope;
+
+    if (env.type === 'file') {
+        return {
+            type: 'file',
+            name: env.name ?? 'file',
+            mimeType: env.mime ?? 'application/octet-stream',
+            data: base64ToUint8(env.data ?? ''),
+        };
+    }
+
+    return { type: 'text', text: env.text ?? plaintext };
 }
 
 // --- Base64 helpers (isomorphic) ---

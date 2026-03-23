@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ty-cs/whisper/internal/api"
@@ -117,18 +120,27 @@ func runCreate(cmd *cobra.Command, server, text, file, expires string, burn bool
 		initialText = text
 		autoSubmit = true
 	} else if fileChanged {
-		data, err := os.ReadFile(file)
+		const maxFileSize = 5 * 1024 * 1024 // 5 MB
+		fi, err := os.Stat(file)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("file not found: %s", file)
+				return fmt.Errorf("file not found: %q", file)
 			}
 			if os.IsPermission(err) {
-				return fmt.Errorf("permission denied: %s", file)
+				return fmt.Errorf("permission denied: %q", file)
 			}
 			return fmt.Errorf("reading file: %w", err)
 		}
-		initialText = string(data)
-		autoSubmit = true
+		if fi.Size() > maxFileSize {
+			return fmt.Errorf("file too large: %q is %.1f MB; maximum is 5 MB", file, float64(fi.Size())/(1024*1024))
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("reading file: %w", err)
+		}
+		// File payloads always bypass the TUI — use headlessCreateFile directly.
+		client := api.NewClient(baseURL)
+		return headlessCreateFile(client, data, filepath.Base(file), expires, burnAfterReading, maxViews, password, jsonOutput)
 	} else if stdinPiped {
 		var err error
 		initialText, err = readPipedSecret()
@@ -229,6 +241,94 @@ func headlessCreate(client *api.Client, text, expiresIn string, burnAfterReading
 		fmt.Println(finalURL)
 	}
 	return nil
+}
+
+func headlessCreateFile(client *api.Client, data []byte, filename, expiresIn string, burnAfterReading bool, maxViews int, password string, jsonOutput bool) error {
+	mimeType := detectMIME(filename, data)
+
+	urlKey, err := crypto.GenerateKey()
+	if err != nil {
+		return fmt.Errorf("generating key: %w", err)
+	}
+
+	encryptionKey := urlKey
+	hasPassword := false
+
+	if password != "" {
+		derived, err := crypto.DeriveKeyFromPassword(password, urlKey)
+		if err != nil {
+			return fmt.Errorf("deriving key: %w", err)
+		}
+		encryptionKey = derived
+		hasPassword = true
+	}
+
+	whisperPayload := &crypto.WhisperPayload{
+		Type:     "file",
+		Name:     filename,
+		MimeType: mimeType,
+		Data:     data,
+	}
+
+	base58Key := crypto.KeyToBase58(urlKey)
+
+	payload, err := crypto.EncryptPayload(whisperPayload, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("encrypting: %w", err)
+	}
+
+	mv := maxViews
+	if burnAfterReading {
+		mv = 1
+	}
+
+	req := &api.CreateRequest{
+		Ciphertext:       payload.Ciphertext,
+		IV:               payload.IV,
+		ExpiresIn:        expiresIn,
+		BurnAfterReading: burnAfterReading,
+		MaxViews:         mv,
+		HasPassword:      hasPassword,
+	}
+
+	resp, err := client.CreateSecret(req)
+	if err != nil {
+		return err
+	}
+
+	finalURL := fmt.Sprintf("%s/s/%s#%s", client.BaseURL, resp.ID, base58Key)
+
+	if jsonOutput {
+		out, _ := json.Marshal(map[string]interface{}{
+			"url":       finalURL,
+			"id":        resp.ID,
+			"expiresAt": resp.ExpiresAt,
+		})
+		fmt.Println(string(out))
+	} else {
+		fmt.Println(finalURL)
+	}
+	return nil
+}
+
+// detectMIME returns the MIME type for a file, without parameters.
+// It tries the file extension first, falls back to content sniffing.
+func detectMIME(filename string, data []byte) string {
+	if ext := filepath.Ext(filename); ext != "" {
+		if t := mime.TypeByExtension(ext); t != "" {
+			// Strip parameters (e.g. "text/html; charset=utf-8" → "text/html")
+			if mediaType, _, err := mime.ParseMediaType(t); err == nil {
+				return mediaType
+			}
+			return t
+		}
+	}
+	// http.DetectContentType always returns a valid type (never empty)
+	t := http.DetectContentType(data)
+	if mediaType, _, err := mime.ParseMediaType(t); err == nil {
+		return mediaType
+	}
+	return t
 }
 
 // readPipedSecret reads all of stdin (caller must ensure stdin is piped).

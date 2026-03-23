@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -96,5 +97,122 @@ func TestInvalidKeyLength(t *testing.T) {
 	_, err := Encrypt("test", shortKey)
 	if err == nil {
 		t.Fatal("Expected error for short key")
+	}
+}
+
+func TestEncryptDecryptPayloadText(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey failed: %v", err)
+	}
+
+	original := &WhisperPayload{Type: "text", Text: "hello world"}
+	encrypted, err := EncryptPayload(original, key)
+	if err != nil {
+		t.Fatalf("EncryptPayload failed: %v", err)
+	}
+
+	result, err := DecryptPayload(encrypted, key)
+	if err != nil {
+		t.Fatalf("DecryptPayload failed: %v", err)
+	}
+
+	if result.Type != "text" || result.Text != "hello world" {
+		t.Errorf("unexpected result: %+v", result)
+	}
+}
+
+func TestEncryptDecryptPayloadFile(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey failed: %v", err)
+	}
+
+	data := []byte{1, 2, 3, 255, 0, 128}
+	original := &WhisperPayload{
+		Type:     "file",
+		Name:     "test.bin",
+		MimeType: "application/octet-stream",
+		Data:     data,
+	}
+	encrypted, err := EncryptPayload(original, key)
+	if err != nil {
+		t.Fatalf("EncryptPayload failed: %v", err)
+	}
+
+	result, err := DecryptPayload(encrypted, key)
+	if err != nil {
+		t.Fatalf("DecryptPayload failed: %v", err)
+	}
+
+	if result.Type != "file" {
+		t.Fatalf("expected type=file, got %q", result.Type)
+	}
+	if result.Name != "test.bin" {
+		t.Errorf("expected name=test.bin, got %q", result.Name)
+	}
+	if result.MimeType != "application/octet-stream" {
+		t.Errorf("expected mime=application/octet-stream, got %q", result.MimeType)
+	}
+	if !bytes.Equal(result.Data, data) {
+		t.Errorf("data mismatch: got %v, want %v", result.Data, data)
+	}
+}
+
+func TestEncryptPayloadNilPanics(t *testing.T) {
+	key, _ := GenerateKey()
+	_, err := EncryptPayload(nil, key)
+	if err == nil {
+		t.Fatal("expected error for nil payload")
+	}
+}
+
+func TestDecryptPayloadFileEmptyNameFallback(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey failed: %v", err)
+	}
+
+	// Encrypt an envelope where name is empty string — simulates missing name
+	original := &WhisperPayload{
+		Type:     "file",
+		Name:     "",
+		MimeType: "application/octet-stream",
+		Data:     []byte{1, 2, 3},
+	}
+	encrypted, err := EncryptPayload(original, key)
+	if err != nil {
+		t.Fatalf("EncryptPayload failed: %v", err)
+	}
+
+	result, err := DecryptPayload(encrypted, key)
+	if err != nil {
+		t.Fatalf("DecryptPayload failed: %v", err)
+	}
+
+	if result.Name != "file" {
+		t.Errorf("expected name fallback to 'file', got %q", result.Name)
+	}
+}
+
+func TestDecryptPayloadLegacy(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey failed: %v", err)
+	}
+
+	// Legacy secret: encrypted with Encrypt (no envelope)
+	legacy, err := Encrypt("legacy secret", key)
+	if err != nil {
+		t.Fatalf("Encrypt failed: %v", err)
+	}
+
+	result, err := DecryptPayload(legacy, key)
+	if err != nil {
+		t.Fatalf("DecryptPayload failed: %v", err)
+	}
+
+	if result.Type != "text" || result.Text != "legacy secret" {
+		t.Errorf("unexpected result: %+v", result)
 	}
 }

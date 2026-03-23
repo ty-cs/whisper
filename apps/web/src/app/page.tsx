@@ -3,23 +3,27 @@
 import { useMutation } from '@tanstack/react-query';
 import {
   deriveKeyFromPassword,
-  encrypt,
+  encryptPayload,
   generateKey,
   uint8ToBase58,
+  type WhisperPayload,
 } from '@whisper/crypto';
 import { QRCodeSVG } from 'qrcode.react';
 import type React from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { createSecret } from '@/lib/api';
 
 export default function Home() {
+  const [mode, setMode] = useState<'text' | 'file'>('text');
   const [text, setText] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [expiresIn, setExpiresIn] = useState('24h');
   const [maxViews, setMaxViews] = useState<number>(0);
   const [burnAfterReading, setBurnAfterReading] = useState(false);
   const [password, setPassword] = useState('');
-
   const [resultUrl, setResultUrl] = useState('');
 
   const createSecretMutation = useMutation({
@@ -31,11 +35,24 @@ export default function Home() {
         encryptionKey = await deriveKeyFromPassword(password, urlKey);
       }
 
-      const payload = await encrypt(text, encryptionKey);
+      let whisperPayload: WhisperPayload;
+      if (mode === 'file' && selectedFile) {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        whisperPayload = {
+          type: 'file',
+          name: selectedFile.name,
+          mimeType: selectedFile.type || 'application/octet-stream',
+          data: new Uint8Array(arrayBuffer),
+        };
+      } else {
+        whisperPayload = { type: 'text', text };
+      }
+
+      const encrypted = await encryptPayload(whisperPayload, encryptionKey);
 
       const data = await createSecret({
-        ciphertext: payload.ciphertext,
-        iv: payload.iv,
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
         expiresIn,
         burnAfterReading,
         maxViews,
@@ -54,15 +71,35 @@ export default function Home() {
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!text.trim()) return;
 
-    const byteSize = new Blob([text]).size;
-    if (byteSize > 700 * 1024) {
-      toast.error('Payload too large. Maximum input size is 700 KB.');
-      return;
+    if (mode === 'text') {
+      if (!text.trim()) return;
+      const byteSize = new Blob([text]).size;
+      if (byteSize > 700 * 1024) {
+        toast.error('Payload too large. Maximum input size is 700 KB.');
+        return;
+      }
+    } else {
+      if (!selectedFile) return;
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        toast.error('FILE_TOO_LARGE. Maximum size is 5 MB.');
+        return;
+      }
     }
 
     createSecretMutation.mutate();
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) setSelectedFile(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setSelectedFile(file);
   };
 
   if (resultUrl) {
@@ -124,6 +161,8 @@ export default function Home() {
                     onClick={() => {
                       setResultUrl('');
                       setText('');
+                      setSelectedFile(null);
+                      setMode('text');
                       setPassword('');
                     }}
                     className="flex-1 flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold tracking-widest uppercase text-[var(--muted-fg)] hover:bg-[var(--foreground)] hover:text-[#050505] transition-all duration-100 group/new">
@@ -152,21 +191,124 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="space-y-4 flex-1 flex flex-col animate-fade-in-up delay-300">
-          <label
-            htmlFor="text"
-            className="block text-xs font-bold tracking-widest text-[var(--muted-fg)] uppercase">
-            [ INPUT STREAM ]
-          </label>
-          <textarea
-            id="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="term-input flex-1 min-h-[300px] border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] p-8 resize-none leading-relaxed text-sm sm:text-base focus:bg-[var(--muted)]/10 appearance-none outline-none"
-            placeholder="Type secret payload here..."
+        {/* Mode toggle */}
+        <div className="flex border border-[var(--muted)] animate-fade-in-up delay-200">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('text');
+              setSelectedFile(null);
+            }}
             disabled={isPending}
-          />
+            className={`flex-1 py-2.5 text-[10px] font-bold tracking-widest uppercase transition-all duration-100 ${
+              mode === 'text'
+                ? 'bg-[var(--foreground)] text-[#050505]'
+                : 'text-[var(--muted-fg)] hover:text-[var(--foreground)]'
+            }`}>
+            [ TEXT ]
+          </button>
+          <div className="w-px bg-[var(--muted)]" />
+          <button
+            type="button"
+            onClick={() => {
+              setMode('file');
+              setText('');
+            }}
+            disabled={isPending}
+            className={`flex-1 py-2.5 text-[10px] font-bold tracking-widest uppercase transition-all duration-100 ${
+              mode === 'file'
+                ? 'bg-[var(--foreground)] text-[#050505]'
+                : 'text-[var(--muted-fg)] hover:text-[var(--foreground)]'
+            }`}>
+            [ FILE ]
+          </button>
         </div>
+
+        {mode === 'text' ? (
+          <div className="space-y-4 flex-1 flex flex-col animate-fade-in-up delay-300">
+            <label
+              htmlFor="text"
+              className="block text-xs font-bold tracking-widest text-[var(--muted-fg)] uppercase">
+              [ INPUT STREAM ]
+            </label>
+            <textarea
+              id="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="term-input flex-1 min-h-[300px] border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] p-8 resize-none leading-relaxed text-sm sm:text-base focus:bg-[var(--muted)]/10 appearance-none outline-none"
+              placeholder="Type secret payload here..."
+              disabled={isPending}
+            />
+          </div>
+        ) : (
+          <div className="space-y-4 flex-1 flex flex-col animate-fade-in-up delay-300">
+            <label
+              htmlFor="file-input"
+              className="block text-xs font-bold tracking-widest text-[var(--muted-fg)] uppercase">
+              [ PAYLOAD ]
+            </label>
+            <input
+              id="file-input"
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={isPending}
+            />
+            {selectedFile ? (
+              <div className="border border-[var(--border)] flex items-center gap-4 px-5 py-4">
+                <span className="text-2xl opacity-50">📄</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-[var(--foreground)] truncate">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-[10px] text-[var(--muted-fg)] uppercase tracking-wide mt-0.5">
+                    {(selectedFile.size / 1024).toFixed(1)} KB ·{' '}
+                    {selectedFile.type || 'application/octet-stream'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  disabled={isPending}
+                  className="text-[10px] font-bold tracking-widest uppercase text-red-500 border border-red-500 px-2.5 py-1 hover:bg-red-500 hover:text-[#050505] transition-colors">
+                  CLEAR
+                </button>
+              </div>
+            ) : (
+              <section
+                aria-label="File drop zone"
+                onDrop={handleFileDrop}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDragEnd={() => setIsDragging(false)}
+                className={`flex-1 min-h-[300px] border border-dashed flex flex-col items-center justify-center gap-4 transition-colors ${
+                  isDragging
+                    ? 'border-[var(--foreground)] bg-[var(--muted)]/10'
+                    : 'border-[var(--border)]'
+                }`}>
+                <span className="text-3xl opacity-30">⬆</span>
+                <div className="text-center">
+                  <p className="text-[11px] font-bold tracking-widest uppercase text-[var(--foreground)]">
+                    Drop file here
+                  </p>
+                  <p className="text-[10px] text-[var(--muted-fg)] uppercase tracking-wide mt-1">
+                    Images, PDFs, archives · Max 5 MB
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[10px] font-bold tracking-widest uppercase text-[var(--muted-fg)] border border-[var(--muted)] px-4 py-2 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer">
+                  &gt; BROWSE_FILES
+                </button>
+              </section>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-[var(--muted)] pt-8 animate-fade-in-up delay-400">
           {/* Expiry */}
@@ -275,14 +417,16 @@ export default function Home() {
 
         <button
           type="submit"
-          disabled={isPending || !text.trim()}
+          disabled={
+            isPending || (mode === 'text' ? !text.trim() : !selectedFile)
+          }
           className={`w-full mt-8 py-4 px-6 border font-bold uppercase tracking-[0.2em] font-mono transition-all duration-100 ease-in-out rounded-none flex items-center justify-center gap-4 relative overflow-hidden group
             ${
               isPending
                 ? 'bg-(--foreground) text-[#050505] border-(--foreground) opacity-75 cursor-wait'
                 : 'bg-(--foreground) text-[#050505] border-(--foreground) hover:bg-transparent hover:text-(--foreground) active:scale-[0.99]'
             }
-            ${!isPending && !text.trim() ? 'opacity-30 cursor-not-allowed border-(--border)' : ''}
+            ${!isPending && (mode === 'text' ? !text.trim() : !selectedFile) ? 'opacity-30 cursor-not-allowed border-(--border)' : ''}
           `}>
           {isPending ? (
             <div className="flex items-center gap-3">

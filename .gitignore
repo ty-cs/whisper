@@ -28,6 +28,8 @@ Thumbs.db
 .env*.local
 
 .claude/
+.superpowers/
+.worktrees/
 
 # Playwright
 /test-results/
