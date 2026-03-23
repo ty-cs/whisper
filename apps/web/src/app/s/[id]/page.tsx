@@ -10,7 +10,7 @@ import {
 } from '@whisper/crypto';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { deleteSecret, getSecret } from '@/lib/api';
 import { EXPIRED_SENTINEL, formatTimeLeft } from '@/lib/format-time-left';
@@ -55,70 +55,61 @@ export default function ViewSecretPage({
     },
   });
 
-  // 3. Decrypt Mutation
-  const decryptMutation = useMutation({
-    mutationFn: async ({
-      payloadData,
-      pass,
-    }: {
-      payloadData: GetSecretResponse;
-      pass: string;
-    }) => {
-      const hash = window.location.hash.replace('#', '');
-      if (!hash) throw new Error('Encryption key not found in URL.');
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const hasAutoDecrypted = useRef(false);
 
-      const urlKey = base58ToUint8(hash);
-      let finalKey = urlKey;
-
-      if (payloadData.hasPassword) {
-        if (!pass) throw new Error('Password is required.');
-        finalKey = await deriveKeyFromPassword(pass, urlKey);
-      }
-
-      return await decryptPayload(
-        { ciphertext: payloadData.ciphertext, iv: payloadData.iv },
-        finalKey,
-      );
-    },
-    onSuccess: (result) => {
-      setDecryptedPayload(result);
+  // 3. Decrypt Handler
+  const handleDecrypt = useCallback(
+    async (payloadData: GetSecretResponse, pass: string) => {
+      setIsDecrypting(true);
       setDecryptionError('');
-    },
-    onError: (err: Error) => {
-      console.error('[onError] Decryption error:', err);
-      if (
-        err.name === 'OperationError' ||
-        err.message.includes('password') ||
-        err.message.includes('key')
-      ) {
-        setDecryptionError(
-          'Decryption failed. Incorrect password or invalid key.',
+      try {
+        const hash = window.location.hash.replace('#', '');
+        if (!hash) throw new Error('Encryption key not found in URL.');
+
+        const urlKey = base58ToUint8(hash);
+        let finalKey = urlKey;
+
+        if (payloadData.hasPassword) {
+          if (!pass) throw new Error('Password is required.');
+          finalKey = await deriveKeyFromPassword(pass, urlKey);
+        }
+
+        const result = await decryptPayload(
+          { ciphertext: payloadData.ciphertext, iv: payloadData.iv },
+          finalKey,
         );
-      } else {
-        setDecryptionError('Decryption failed.');
+        setDecryptedPayload(result);
+      } catch (err) {
+        console.error('[onError] Decryption error:', err);
+        const message = err instanceof Error ? err.message : '';
+        const name = err instanceof Error ? err.name : '';
+        const isAuthError =
+          name === 'OperationError' ||
+          message.includes('password') ||
+          message.includes('key');
+
+        if (isAuthError) {
+          setDecryptionError(
+            'Decryption failed. Incorrect password or invalid key.',
+          );
+        } else {
+          setDecryptionError('Decryption failed.');
+        }
+      } finally {
+        setIsDecrypting(false);
       }
     },
-  });
+    [],
+  );
 
   // Auto-decrypt if no password is required
-  const decryptMutationMutate = decryptMutation.mutate;
   useEffect(() => {
-    if (
-      payload &&
-      !payload.hasPassword &&
-      !decryptedPayload &&
-      !decryptMutation.isPending &&
-      !decryptMutation.isError
-    ) {
-      decryptMutationMutate({ payloadData: payload, pass: '' });
+    if (payload && !payload.hasPassword && !hasAutoDecrypted.current) {
+      hasAutoDecrypted.current = true;
+      handleDecrypt(payload, '');
     }
-  }, [
-    payload,
-    decryptedPayload,
-    decryptMutation.isPending,
-    decryptMutation.isError,
-    decryptMutationMutate,
-  ]);
+  }, [payload, handleDecrypt]);
 
   useEffect(() => {
     if (!payload?.expiresAt) return;
@@ -357,7 +348,7 @@ export default function ViewSecretPage({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              decryptMutation.mutate({ payloadData: payload, pass: password });
+              handleDecrypt(payload, password);
             }}
             className="space-y-6 w-full mt-4">
             <input
@@ -369,7 +360,7 @@ export default function ViewSecretPage({
               }}
               className="term-input text-center text-xl tracking-widest border border-[var(--muted)] hover:border-[var(--foreground)] focus:border-[var(--foreground)] py-3 px-4 w-full appearance-none outline-none"
               placeholder="********"
-              disabled={decryptMutation.isPending}
+              disabled={isDecrypting}
             />
 
             {!!decryptionError && (
@@ -381,8 +372,8 @@ export default function ViewSecretPage({
             <button
               type="submit"
               className="term-btn-primary w-full flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group transition-all duration-100 ease-in-out active:scale-[0.99]"
-              disabled={decryptMutation.isPending || !password}>
-              {decryptMutation.isPending ? (
+              disabled={isDecrypting || !password}>
+              {isDecrypting ? (
                 <span className="animate-blink">DECRYPTING...</span>
               ) : (
                 <>
@@ -420,7 +411,7 @@ export default function ViewSecretPage({
     );
   }
 
-  // Auto-decryption in progress (no password, mutation pending)
+  // Auto-decryption in progress (no password required)
   return (
     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in font-mono">
       <div className="flex flex-col items-center gap-6 px-4">
